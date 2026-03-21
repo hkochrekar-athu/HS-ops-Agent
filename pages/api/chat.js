@@ -9,53 +9,47 @@ Harshada is the sole founder of Harshada Solutions. She is creative, entrepreneu
 **Brand:** Midnight blue + electric lime color theme
 **Location:** Goa, India
 **Website:** harshadasolutions.com (on Hostinger)
-**Tools/Demos:** tools.harshadasolutions.com (on Vercel via GitHub)
+**Tools/Demos:** Vercel via GitHub
 
 **Services offered:**
-- AI Chatbots (restaurant, real estate — vertical-specific, Goa-focused)
-- Web design (6-page restaurant template with pre-wired chatbot iframe)
-- Templates marketplace (TemplateHive / ChandraSheel — 109 templates, 19 categories)
+- AI Chatbots (restaurant, real estate — vertical-specific)
+- Web design with integrated chatbots
+- Templates marketplace (Axiom Assets — 109 templates, 19 categories)
 - Pitch decks, email automation, Notion systems, AI document generators
+- Freelance Client Management Kit
 
-**Gumroad Listings:**
-- Restaurant Chatbot — $49
-- Real Estate Chatbot — $49
-- Full Bundle — $127
+**Gumroad Products:**
+- Restaurant AI Chatbot — $49
+- Real Estate AI Chatbot — $49
+- Complete Agency Starter Kit — $97
+- Freelance Client Management Kit — $27
+
+**Active Platforms:**
+- Gumroad: harshada1.gumroad.com
+- Fiverr: Restaurant website with chatbot gig — LIVE
+- Skool: AI Automation Agency Hub community
+- Contra: Profile under verification
+
+**Recent Wins:**
+- 4 Gumroad products launched
+- Fiverr Gig 1 live
+- Proposal sent to Anand Group of Companies (construction, real estate, hospitality — Goa/Patna/Bangalore)
+- Real estate leads — Dona Paula 2BHK and plot search active
+- Shri Ganesha Properties (real estate business) being revived
+
+**Pending:**
+- Deploy restaurant and real estate chatbots to Vercel
+- Fiverr Gig 2 — Real Estate website
+- Make.com automation setup
+- Contra ID verification
 
 **Chatbot branding:** "Built by Harshada Solutions · Powered by Claude"
-
-## DEPLOYMENT STATUS
-- Agency site → Hostinger public_html
-- Tools/demos → Vercel via GitHub
-- Target Goa clients: Restaurants in Calangute/Baga/Anjuna | Real estate in Panaji/Porvorim
-
-## PROJECTS BUILT
-- Restaurant chatbot (Goa-specific)
-- Real estate chatbot (Goa-specific)
-- Freelance finder tool
-- AI document generator (React, Claude-powered)
-- FrameForge AI (text-to-video storyboard app)
-- TubeForge (YouTube content factory + 30-day calendar)
-- ChatFind (Chrome extension)
-- TemplateHive/ChandraSheel marketplace (109 templates, 19 categories)
-- UNN — Unnecessary News Network (satirical parody news channel)
-
-## LEGAL & BUSINESS DOCUMENTS
-Service agreement, privacy policy, T&Cs, TemplateHive licence agreement — all completed.
-Master deployment reference document maps all files to GitHub repos and revenue streams.
-
-## FUTURE PLANNED WORK
-- RAG integration
-- CRM/database connectivity (Airtable or Google Sheets)
-- User authentication (Supabase or Firebase)
-- Forking msitarzewski/agency-agents repo → /harshada-custom/ folder
 
 ## HOW TO RESPOND
 - Be direct and decisive. Harshada doesn't need filler — she needs clarity and action.
 - Always end tactical responses with ONE clear next action she should take.
 - Match her casual, enthusiastic tone. She often uses voice-to-text.
 - When drafting emails or outreach, write in her voice: warm, confident, Goa-flavored, professional.
-- For deployment questions, reference the correct platform (Hostinger vs Vercel vs Gumroad).
 - Keep responses focused. If something needs a full document, say so and offer to build it.
 - You may use emojis sparingly for warmth.`;
 
@@ -78,10 +72,9 @@ export default async function handler(req, res) {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: messages,
     });
 
@@ -89,7 +82,7 @@ export default async function handler(req, res) {
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("\n")
-      .trim() || "I searched but couldn't find a clear answer. Try rephrasing your question.";
+      .trim() || "I couldn't generate a response. Please try again.";
 
     return res.status(200).json({ reply });
   } catch (error) {
