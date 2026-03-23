@@ -1,145 +1,202 @@
-import Anthropic from "@anthropic-ai/sdk";
+// pages/api/whatsapp.js
+// WhatsApp webhook — Twilio receives message, Claude + Notion handles it
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const NOTION_VERSION = "2022-06-28";
+const Anthropic = require('@anthropic-ai/sdk');
+const { Client } = require('@notionhq/client');
 
-const SYSTEM_PROMPT = `You are the Agency OS Agent for Harshada Solutions — a WhatsApp AI assistant that manages a Notion workspace through natural conversation.
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const notion = new Client({ auth: process.env.NOTION_SECRET });
 
-You can take real actions in Notion:
-- add_client: Add a new client to the CRM database
-- add_project: Add a new project to the Projects database
-- query_notion: Read data from a Notion database
+const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
+const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
 
-Parse casual WhatsApp messages and extract data. Examples:
-- "New client Raj Sharma, restaurant, 15k chatbot" → add_client(name=Raj Sharma, industry=Restaurant, value=₹15,000, service=AI Chatbot, status=Lead)
-- "Project for Goa Eats website, due April 30" → add_project(title=Goa Eats Website, client=Goa Eats, status=Planning)
-- "Show my active clients" → query_notion(database=crm)
-
-Reply style: SHORT (2-3 lines max). Use ✅ for confirmations. This is WhatsApp — be casual and warm.`;
-
-const TOOLS = [
+// ── TOOLS ─────────────────────────────────────────────────────────────────────
+const tools = [
   {
     name: "add_client",
-    description: "Add a new client to the Notion CRM database",
+    description: "Add a new client to the Notion CRM database.",
     input_schema: {
       type: "object",
       properties: {
-        name: { type: "string" },
-        contact: { type: "string" },
-        service: { type: "string" },
-        value: { type: "string" },
-        status: { type: "string", enum: ["Lead", "Proposal", "Active", "Completed"] },
-        industry: { type: "string" },
+        name:          { type: "string" },
+        status:        { type: "string", enum: ["Active", "Lead", "Paused", "Completed"] },
+        business_type: { type: "string" },
+        contact_name:  { type: "string" },
+        whatsapp:      { type: "string" },
+        location:      { type: "string" },
+        retainer:      { type: "number" },
+        notes:         { type: "string" },
       },
-      required: ["name", "service", "status"],
+      required: ["name"],
+    },
+  },
+  {
+    name: "get_clients",
+    description: "Fetch clients from the Notion CRM.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["Active", "Lead", "Paused", "Completed", "all"] },
+      },
+      required: [],
     },
   },
   {
     name: "add_project",
-    description: "Add a new project to the Notion Projects database",
+    description: "Add a new project to Notion Projects database.",
     input_schema: {
       type: "object",
       properties: {
-        title: { type: "string" },
-        client: { type: "string" },
-        status: { type: "string", enum: ["Planning", "In Progress", "Review", "Completed", "On Hold"] },
-        due_date: { type: "string", description: "YYYY-MM-DD format" },
-        budget: { type: "string" },
+        name:           { type: "string" },
+        client_name:    { type: "string" },
+        status:         { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold"] },
+        service_type:   { type: "string" },
+        deadline:       { type: "string" },
+        value:          { type: "number" },
+        payment_status: { type: "string", enum: ["Unpaid", "50% Paid", "Fully Paid"] },
+        notes:          { type: "string" },
       },
-      required: ["title", "status"],
+      required: ["name"],
     },
   },
   {
-    name: "query_notion",
-    description: "Read data from a Notion database",
+    name: "get_projects",
+    description: "Fetch projects from Notion.",
     input_schema: {
       type: "object",
       properties: {
-        database: { type: "string", enum: ["crm", "projects"] },
+        status: { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold", "all"] },
       },
-      required: ["database"],
+      required: [],
     },
+  },
+  {
+    name: "get_dashboard_summary",
+    description: "Get a full agency summary — active clients, projects, pending payments.",
+    input_schema: { type: "object", properties: {}, required: [] },
   },
 ];
 
-async function notionReq(endpoint, method, body) {
-  const res = await fetch(`https://api.notion.com/v1${endpoint}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
-      "Content-Type": "application/json",
-      "Notion-Version": NOTION_VERSION,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Notion error");
-  return data;
+// ── NOTION ACTIONS ─────────────────────────────────────────────────────────────
+async function addClient(input) {
+  const props = { "Name": { title: [{ text: { content: input.name } }] } };
+  if (input.status)        props["Status"]           = { select: { name: input.status } };
+  if (input.business_type) props["Business Type"]    = { select: { name: input.business_type } };
+  if (input.contact_name)  props["Contact Name"]     = { rich_text: [{ text: { content: input.contact_name } }] };
+  if (input.whatsapp)      props["WhatsApp"]         = { phone_number: input.whatsapp };
+  if (input.location)      props["Location"]         = { rich_text: [{ text: { content: input.location } }] };
+  if (input.retainer)      props["Monthly Retainer"] = { number: input.retainer };
+  if (input.notes)         props["Notes"]            = { rich_text: [{ text: { content: input.notes } }] };
+  const page = await notion.pages.create({ parent: { database_id: CLIENTS_DB }, properties: props });
+  return { success: true, id: page.id, name: input.name };
 }
 
-async function runTool(name, input) {
-  const IDS = {
-    crm: process.env.NOTION_CRM_DB_ID,
-    projects: process.env.NOTION_PROJECTS_DB_ID,
+async function getClients(input) {
+  const filter = input.status && input.status !== "all"
+    ? { property: "Status", select: { equals: input.status } } : undefined;
+  const response = await notion.databases.query({
+    database_id: CLIENTS_DB, filter,
+    sorts: [{ property: "Name", direction: "ascending" }], page_size: 20,
+  });
+  return response.results.map(p => ({
+    name:     p.properties["Name"]?.title?.[0]?.text?.content || "Unnamed",
+    status:   p.properties["Status"]?.select?.name || "—",
+    type:     p.properties["Business Type"]?.select?.name || "—",
+    location: p.properties["Location"]?.rich_text?.[0]?.text?.content || "—",
+    retainer: p.properties["Monthly Retainer"]?.number || null,
+  }));
+}
+
+async function addProject(input) {
+  const props = { "Project Name": { title: [{ text: { content: input.name } }] } };
+  if (input.status)         props["Status"]         = { select: { name: input.status || "Not Started" } };
+  if (input.service_type)   props["Service Type"]   = { select: { name: input.service_type } };
+  if (input.deadline)       props["Deadline"]       = { date: { start: input.deadline } };
+  if (input.value)          props["Project Value"]  = { number: input.value };
+  if (input.payment_status) props["Payment Status"] = { select: { name: input.payment_status || "Unpaid" } };
+  if (input.notes)          props["Notes"]          = { rich_text: [{ text: { content: input.notes } }] };
+  const page = await notion.pages.create({ parent: { database_id: PROJECTS_DB }, properties: props });
+  return { success: true, id: page.id, name: input.name };
+}
+
+async function getProjects(input) {
+  const filter = input.status && input.status !== "all"
+    ? { property: "Status", select: { equals: input.status } } : undefined;
+  const response = await notion.databases.query({
+    database_id: PROJECTS_DB, filter,
+    sorts: [{ property: "Deadline", direction: "ascending" }], page_size: 20,
+  });
+  return response.results.map(p => ({
+    name:     p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed",
+    status:   p.properties["Status"]?.select?.name || "—",
+    deadline: p.properties["Deadline"]?.date?.start || "—",
+    value:    p.properties["Project Value"]?.number || null,
+    payment:  p.properties["Payment Status"]?.select?.name || "—",
+  }));
+}
+
+async function getDashboardSummary() {
+  const [allClients, allProjects] = await Promise.all([
+    notion.databases.query({ database_id: CLIENTS_DB, page_size: 50 }),
+    notion.databases.query({ database_id: PROJECTS_DB, page_size: 50 }),
+  ]);
+  const clients = allClients.results;
+  const projects = allProjects.results;
+  const activeClients = clients.filter(p => p.properties["Status"]?.select?.name === "Active").length;
+  const leads = clients.filter(p => p.properties["Status"]?.select?.name === "Lead").length;
+  const inProgress = projects.filter(p => p.properties["Status"]?.select?.name === "In Progress").length;
+  const unpaidProjects = projects.filter(p => p.properties["Payment Status"]?.select?.name === "Unpaid");
+  const pendingValue = unpaidProjects.reduce((sum, p) => sum + (p.properties["Project Value"]?.number || 0), 0);
+  return {
+    active_clients: activeClients, leads,
+    projects_in_progress: inProgress, total_projects: projects.length,
+    pending_payment_value: pendingValue,
+    unpaid_projects: unpaidProjects.map(p => p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed"),
   };
+}
 
-  try {
-    if (name === "add_client") {
-      if (!IDS.crm) return { ok: false, error: "CRM DB not connected — add NOTION_CRM_DB_ID to Vercel env vars" };
-      await notionReq("/pages", "POST", {
-        parent: { database_id: IDS.crm },
-        properties: {
-          Name: { title: [{ text: { content: input.name } }] },
-          Status: { select: { name: input.status || "Lead" } },
-          Service: { rich_text: [{ text: { content: input.service || "" } }] },
-          Value: { rich_text: [{ text: { content: input.value || "" } }] },
-          Industry: { rich_text: [{ text: { content: input.industry || "" } }] },
-          Contact: { rich_text: [{ text: { content: input.contact || "" } }] },
-        },
-      });
-      return { ok: true, msg: `Client "${input.name}" added to CRM` };
-    }
-
-    if (name === "add_project") {
-      if (!IDS.projects) return { ok: false, error: "Projects DB not connected — add NOTION_PROJECTS_DB_ID to Vercel env vars" };
-      const props = {
-        Name: { title: [{ text: { content: input.title } }] },
-        Status: { select: { name: input.status || "Planning" } },
-        Client: { rich_text: [{ text: { content: input.client || "" } }] },
-        Budget: { rich_text: [{ text: { content: input.budget || "" } }] },
-      };
-      if (input.due_date) props["Due Date"] = { date: { start: input.due_date } };
-      await notionReq("/pages", "POST", { parent: { database_id: IDS.projects }, properties: props });
-      return { ok: true, msg: `Project "${input.title}" created` };
-    }
-
-    if (name === "query_notion") {
-      const dbKey = input.database;
-      if (!IDS[dbKey]) return { ok: false, error: `${dbKey} DB not connected` };
-      const result = await notionReq(`/databases/${IDS[dbKey]}/query`, "POST", { page_size: 10 });
-      const items = (result.results || []).map((p) => ({
-        name: p.properties.Name?.title?.[0]?.text?.content || "(unnamed)",
-        status: p.properties.Status?.select?.name || "",
-      }));
-      return { ok: true, data: items };
-    }
-
-    return { ok: false, error: `Unknown tool: ${name}` };
-  } catch (e) {
-    return { ok: false, error: e.message };
+async function executeTool(name, input) {
+  switch (name) {
+    case "add_client":            return await addClient(input);
+    case "get_clients":           return await getClients(input);
+    case "add_project":           return await addProject(input);
+    case "get_projects":          return await getProjects(input);
+    case "get_dashboard_summary": return await getDashboardSummary();
+    default: return { error: "Unknown tool" };
   }
 }
 
-function twilioXml(message) {
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`;
+// ── SYSTEM PROMPT ──────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are the Agency OS Agent for Harshada Solutions — a WhatsApp AI assistant that manages the agency's Notion workspace in real time.
+
+You have live access to the Clients CRM and Projects database in Notion. You can add, read and summarise data instantly.
+
+EXAMPLES of what you understand:
+- "New client Raj Sharma, restaurant in Calangute, 15k chatbot" → add_client
+- "Add project: Goa Eats website, due April 30, 25000" → add_project
+- "Show my active clients" → get_clients
+- "What projects are in progress?" → get_projects
+- "Dashboard" or "How's the agency doing?" → get_dashboard_summary
+
+REPLY RULES (this is WhatsApp):
+- Keep replies SHORT — 3-5 lines max
+- Use ✅ to confirm actions
+- Use ₹ for money
+- Be warm and direct — like texting a smart assistant
+- After adding something, always say which Notion database it went into`;
+
+// ── TWILIO HELPER ──────────────────────────────────────────────────────────────
+function twilioXml(msg) {
+  // Escape XML special chars
+  const safe = msg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safe}</Message></Response>`;
 }
 
+// ── MAIN HANDLER ───────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
 
-  const body = req.body;
-  const incomingMsg = body?.Body?.trim();
-
+  const incomingMsg = req.body?.Body?.trim();
   if (!incomingMsg) {
     res.setHeader("Content-Type", "text/xml");
     return res.status(200).send(twilioXml("Hey! Send me a message to get started 👋"));
@@ -148,24 +205,43 @@ export default async function handler(req, res) {
   try {
     let messages = [{ role: "user", content: incomingMsg }];
     let finalReply = "";
-    let iterations = 0;
 
-    while (iterations < 5) {
-      iterations++;
-      const response = await client.messages.create({
+    for (let i = 0; i < 5; i++) {
+      const response = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 512,
         system: SYSTEM_PROMPT,
-        tools: TOOLS,
+        tools,
         messages,
       });
 
       if (response.stop_reason === "end_turn") {
-        finalReply = response.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+        finalReply = response.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
         break;
       }
 
       if (response.stop_reason === "tool_use") {
-        messages.push({ role: "assistant", content: response.content });
-        const toolResults = await Promise.all(
-          response.content.filte
+        const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+        const toolResults = [];
+        for (const t of toolUseBlocks) {
+          const result = await executeTool(t.name, t.input);
+          toolResults.push({ type: "tool_result", tool_use_id: t.id, content: JSON.stringify(result) });
+        }
+        messages = [...messages, { role: "assistant", content: response.content }, { role: "user", content: toolResults }];
+        continue;
+      }
+      break;
+    }
+
+    res.setHeader("Content-Type", "text/xml");
+    return res.status(200).send(twilioXml(finalReply || "Done! ✅ Check your Notion."));
+  } catch (err) {
+    console.error("WhatsApp agent error:", err);
+    res.setHeader("Content-Type", "text/xml");
+    return res.status(200).send(twilioXml("Something went wrong 🙏 Try again in a moment."));
+  }
+}
+
+export const config = {
+  api: { bodyParser: { type: "application/x-www-form-urlencoded" } },
+};
