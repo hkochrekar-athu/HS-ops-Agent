@@ -116,6 +116,10 @@ async function addClient(input) {
 }
 
 async function getClients(input) {
+  if (!CLIENTS_DB) {
+    throw new Error("CLIENTS_DB environment variable is not set");
+  }
+
   const filter = input.status && input.status !== "all"
     ? { property: "Status", select: { equals: input.status } }
     : undefined;
@@ -168,6 +172,10 @@ async function addProject(input) {
 }
 
 async function getProjects(input) {
+  if (!PROJECTS_DB) {
+    throw new Error("PROJECTS_DB environment variable is not set");
+  }
+
   const filter = input.status && input.status !== "all"
     ? { property: "Status", select: { equals: input.status } }
     : undefined;
@@ -189,6 +197,10 @@ async function getProjects(input) {
 }
 
 async function getDashboardSummary() {
+  if (!CLIENTS_DB || !PROJECTS_DB) {
+    throw new Error("CLIENTS_DB or PROJECTS_DB environment variables are not set");
+  }
+
   const [allClients, allProjects] = await Promise.all([
     notion.databases.query({ database_id: CLIENTS_DB, page_size: 50 }),
     notion.databases.query({ database_id: PROJECTS_DB, page_size: 50 }),
@@ -267,9 +279,7 @@ When users want to add something, use the appropriate tool immediately.`;
 
 // ── MAIN HANDLER ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-
-  
- res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
@@ -295,72 +305,51 @@ export default async function handler(req, res) {
       });
 
       // If Claude is done — return the text response
-     // If Claude is done — return the text response
-if (response.stop_reason === "end_turn") {
-  finalResponse = response.content
-    .filter(b => b.type === "text")
-    .map(b => b.text)
-    .join("");
-  
-  // Provide default response if empty
-  if (!finalResponse) {
-    finalResponse = "Action completed successfully.";
-  }
-  break;
-}
+      if (response.stop_reason === "end_turn") {
+        finalResponse = response.content
+          .filter(b => b.type === "text")
+          .map(b => b.text)
+          .join("");
+        
+        // Provide default response if empty
+        if (!finalResponse) {
+          finalResponse = "Action completed successfully.";
+        }
+        break;
+      }
 
       // If Claude wants to use tools
-     // Agentic loop — keeps going until Claude stops using tools
-for (let i = 0; i < 5; i++) {
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    tools,
-    messages: currentMessages,
-  });
+      if (response.stop_reason === "tool_use") {
+        const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+        const toolResults = [];
 
-  // If Claude is done — return the text response
-  if (response.stop_reason === "end_turn") {
-    finalResponse = response.content
-      .filter(b => b.type === "text")
-      .map(b => b.text)
-      .join("");
-    
-    if (!finalResponse) {
-      finalResponse = "Action completed successfully.";
-    }
-    break;
-  }
+        for (const toolUse of toolUseBlocks) {
+          const result = await executeTool(toolUse.name, toolUse.input);
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(result),
+          });
+        }
 
-  // If Claude wants to use tools
-  if (response.stop_reason === "tool_use") {
-    const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
-    const toolResults = [];
+        // Add Claude's response and tool results to message history
+        currentMessages = [
+          ...currentMessages,
+          { role: "assistant", content: response.content },
+          { role: "user", content: toolResults },
+        ];
+        continue;
+      }
 
-    for (const toolUse of toolUseBlocks) {
-      const result = await executeTool(toolUse.name, toolUse.input);
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: toolUse.id,
-        content: JSON.stringify(result),
-      });
+      // If neither end_turn nor tool_use, exit loop
+      break;
     }
 
-    // Add Claude's response and tool results to message history
-    currentMessages = [
-      ...currentMessages,
-      { role: "assistant", content: response.content },
-      { role: "user", content: toolResults },
-    ];
-    continue;
+    // Return the final response to client
+    return res.status(200).json({ response: finalResponse || "No response generated." });
+
+  } catch (error) {
+    // Handle errors properly
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
-
-  // If neither end_turn nor tool_use, exit
-  break;
-}
-
-// Check if we hit max iterations
-if (!finalResponse) {
-  return res.status(200).json({ response: "Maximum iterations reached. Please try again." });
 }
