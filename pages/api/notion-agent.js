@@ -11,6 +11,11 @@ const notion = new Client({ auth: process.env.NOTION_SECRET });
 const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
 
+// Validate on startup
+if (!CLIENTS_DB || !PROJECTS_DB) {
+  console.warn("WARNING: NOTION_CLIENTS_DB_ID or NOTION_PROJECTS_DB_ID not set in environment variables");
+}
+
 // ── NOTION TOOLS ──────────────────────────────────────────────────────────────
 const tools = [
   {
@@ -84,6 +89,14 @@ const tools = [
 
 // ── NOTION ACTIONS ────────────────────────────────────────────────────────────
 async function addClient(input) {
+  // Add validation
+  if (!CLIENTS_DB) {
+    throw new Error("CLIENTS_DB environment variable is not set");
+  }
+  if (!input.name || input.name.trim() === "") {
+    throw new Error("Client name is required");
+  }
+
   const props = {
     "Name": { title: [{ text: { content: input.name } }] },
   };
@@ -124,9 +137,22 @@ async function getClients(input) {
 }
 
 async function addProject(input) {
+  if (!PROJECTS_DB) {
+    throw new Error("PROJECTS_DB environment variable is not set");
+  }
+  if (!input.name || input.name.trim() === "") {
+    throw new Error("Project name is required");
+  }
+
   const props = {
     "Project Name": { title: [{ text: { content: input.name } }] },
   };
+  // Note: client_name should be linked if you have a relation field in Notion
+  // For now, storing it as notes if needed:
+  if (input.client_name && !input.notes) {
+    props["Notes"] = { rich_text: [{ text: { content: `Client: ${input.client_name}` } }] };
+  }
+  
   if (input.status)         props["Status"]         = { select: { name: input.status || "Not Started" } };
   if (input.service_type)   props["Service Type"]   = { select: { name: input.service_type } };
   if (input.deadline)       props["Deadline"]       = { date: { start: input.deadline } };
@@ -189,13 +215,17 @@ async function getDashboardSummary() {
 
 // ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function executeTool(name, input) {
-  switch (name) {
-    case "add_client":          return await addClient(input);
-    case "get_clients":         return await getClients(input);
-    case "add_project":         return await addProject(input);
-    case "get_projects":        return await getProjects(input);
-    case "get_dashboard_summary": return await getDashboardSummary();
-    default: return { error: "Unknown tool" };
+  try {
+    switch (name) {
+      case "add_client":          return await addClient(input);
+      case "get_clients":         return await getClients(input);
+      case "add_project":         return await addProject(input);
+      case "get_projects":        return await getProjects(input);
+      case "get_dashboard_summary": return await getDashboardSummary();
+      default: return { error: "Unknown tool" };
+    }
+  } catch (error) {
+    return { error: error.message || "Tool execution failed" };
   }
 }
 
@@ -265,44 +295,72 @@ export default async function handler(req, res) {
       });
 
       // If Claude is done — return the text response
-      if (response.stop_reason === "end_turn") {
-        finalResponse = response.content
-          .filter(b => b.type === "text")
-          .map(b => b.text)
-          .join("");
-        break;
-      }
+     // If Claude is done — return the text response
+if (response.stop_reason === "end_turn") {
+  finalResponse = response.content
+    .filter(b => b.type === "text")
+    .map(b => b.text)
+    .join("");
+  
+  // Provide default response if empty
+  if (!finalResponse) {
+    finalResponse = "Action completed successfully.";
+  }
+  break;
+}
 
       // If Claude wants to use tools
-      if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
-        const toolResults = [];
+     // Agentic loop — keeps going until Claude stops using tools
+for (let i = 0; i < 5; i++) {
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1024,
+    system: SYSTEM_PROMPT,
+    tools,
+    messages: currentMessages,
+  });
 
-        for (const toolUse of toolUseBlocks) {
-          const result = await executeTool(toolUse.name, toolUse.input);
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: toolUse.id,
-            content: JSON.stringify(result),
-          });
-        }
+  // If Claude is done — return the text response
+  if (response.stop_reason === "end_turn") {
+    finalResponse = response.content
+      .filter(b => b.type === "text")
+      .map(b => b.text)
+      .join("");
+    
+    if (!finalResponse) {
+      finalResponse = "Action completed successfully.";
+    }
+    break;
+  }
 
-        // Add Claude's response and tool results to message history
-        currentMessages = [
-          ...currentMessages,
-          { role: "assistant", content: response.content },
-          { role: "user", content: toolResults },
-        ];
-        continue;
-      }
+  // If Claude wants to use tools
+  if (response.stop_reason === "tool_use") {
+    const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+    const toolResults = [];
 
-      break;
+    for (const toolUse of toolUseBlocks) {
+      const result = await executeTool(toolUse.name, toolUse.input);
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: toolUse.id,
+        content: JSON.stringify(result),
+      });
     }
 
-    return res.status(200).json({ response: finalResponse });
-
-  } catch (error) {
-    console.error("Agent error:", error);
-    return res.status(500).json({ error: error.message || "Agent failed" });
+    // Add Claude's response and tool results to message history
+    currentMessages = [
+      ...currentMessages,
+      { role: "assistant", content: response.content },
+      { role: "user", content: toolResults },
+    ];
+    continue;
   }
+
+  // If neither end_turn nor tool_use, exit
+  break;
+}
+
+// Check if we hit max iterations
+if (!finalResponse) {
+  return res.status(200).json({ response: "Maximum iterations reached. Please try again." });
 }
