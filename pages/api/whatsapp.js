@@ -18,14 +18,14 @@ const tools = [
     input_schema: {
       type: "object",
       properties: {
-        name:          { type: "string" },
-        status:        { type: "string", enum: ["Active", "Lead", "Paused", "Completed"] },
+        name: { type: "string" },
+        status: { type: "string", enum: ["Active", "Lead", "Paused", "Completed"] },
         business_type: { type: "string" },
-        contact_name:  { type: "string" },
-        whatsapp:      { type: "string" },
-        location:      { type: "string" },
-        retainer:      { type: "number" },
-        notes:         { type: "string" },
+        contact_name: { type: "string" },
+        whatsapp: { type: "string" },
+        location: { type: "string" },
+        retainer: { type: "number" },
+        notes: { type: "string" },
       },
       required: ["name"],
     },
@@ -47,14 +47,14 @@ const tools = [
     input_schema: {
       type: "object",
       properties: {
-        name:           { type: "string" },
-        client_name:    { type: "string" },
-        status:         { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold"] },
-        service_type:   { type: "string" },
-        deadline:       { type: "string" },
-        value:          { type: "number" },
+        name: { type: "string" },
+        client_name: { type: "string" },
+        status: { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold"] },
+        service_type: { type: "string" },
+        deadline: { type: "string" },
+        value: { type: "number" },
         payment_status: { type: "string", enum: ["Unpaid", "50% Paid", "Fully Paid"] },
-        notes:          { type: "string" },
+        notes: { type: "string" },
       },
       required: ["name"],
     },
@@ -80,28 +80,38 @@ const tools = [
 // ── NOTION ACTIONS ─────────────────────────────────────────────────────────────
 async function addClient(input) {
   const props = { "Name": { title: [{ text: { content: input.name } }] } };
-  if (input.status)        props["Status"]           = { select: { name: input.status } };
-  if (input.business_type) props["Business Type"]    = { select: { name: input.business_type } };
-  if (input.contact_name)  props["Contact Name"]     = { rich_text: [{ text: { content: input.contact_name } }] };
-  if (input.whatsapp)      props["WhatsApp"]         = { phone_number: input.whatsapp };
-  if (input.location)      props["Location"]         = { rich_text: [{ text: { content: input.location } }] };
-  if (input.retainer)      props["Monthly Retainer"] = { number: input.retainer };
-  if (input.notes)         props["Notes"]            = { rich_text: [{ text: { content: input.notes } }] };
-  const page = await notion.pages.create({ parent: { database_id: CLIENTS_DB }, properties: props });
+  if (input.status) props["Status"] = { select: { name: input.status } };
+  if (input.business_type) props["Business Type"] = { select: { name: input.business_type } };
+  if (input.contact_name) props["Contact Name"] = { rich_text: [{ text: { content: input.contact_name } }] };
+  if (input.whatsapp) props["WhatsApp"] = { phone_number: input.whatsapp };
+  if (input.location) props["Location"] = { rich_text: [{ text: { content: input.location } }] };
+  if (input.retainer) props["Monthly Retainer"] = { number: input.retainer };
+  if (input.notes) props["Notes"] = { rich_text: [{ text: { content: input.notes } }] };
+
+  const page = await notion.pages.create({
+    parent: { database_id: CLIENTS_DB },
+    properties: props,
+  });
+
   return { success: true, id: page.id, name: input.name };
 }
 
 async function getClients(input) {
   const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } } : undefined;
+    ? { property: "Status", select: { equals: input.status } }
+    : undefined;
+
   const response = await notion.databases.query({
-    database_id: CLIENTS_DB, filter,
-    sorts: [{ property: "Name", direction: "ascending" }], page_size: 20,
+    database_id: CLIENTS_DB,
+    filter,
+    sorts: [{ property: "Name", direction: "ascending" }],
+    page_size: 20,
   });
-  return response.results.map(p => ({
-    name:     p.properties["Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status:   p.properties["Status"]?.select?.name || "—",
-    type:     p.properties["Business Type"]?.select?.name || "—",
+
+  return response.results.map((p) => ({
+    name: p.properties["Name"]?.title?.[0]?.text?.content || "Unnamed",
+    status: p.properties["Status"]?.select?.name || "—",
+    type: p.properties["Business Type"]?.select?.name || "—",
     location: p.properties["Location"]?.rich_text?.[0]?.text?.content || "—",
     retainer: p.properties["Monthly Retainer"]?.number || null,
   }));
@@ -109,29 +119,39 @@ async function getClients(input) {
 
 async function addProject(input) {
   const props = { "Project Name": { title: [{ text: { content: input.name } }] } };
-  if (input.status)         props["Status"]         = { select: { name: input.status || "Not Started" } };
-  if (input.service_type)   props["Service Type"]   = { select: { name: input.service_type } };
-  if (input.deadline)       props["Deadline"]       = { date: { start: input.deadline } };
-  if (input.value)          props["Project Value"]  = { number: input.value };
+  if (input.status) props["Status"] = { select: { name: input.status || "Not Started" } };
+  if (input.service_type) props["Service Type"] = { select: { name: input.service_type } };
+  if (input.deadline) props["Deadline"] = { date: { start: input.deadline } };
+  if (input.value) props["Project Value"] = { number: input.value };
   if (input.payment_status) props["Payment Status"] = { select: { name: input.payment_status || "Unpaid" } };
-  if (input.notes)          props["Notes"]          = { rich_text: [{ text: { content: input.notes } }] };
-  const page = await notion.pages.create({ parent: { database_id: PROJECTS_DB }, properties: props });
+  if (input.notes) props["Notes"] = { rich_text: [{ text: { content: input.notes } }] };
+
+  const page = await notion.pages.create({
+    parent: { database_id: PROJECTS_DB },
+    properties: props,
+  });
+
   return { success: true, id: page.id, name: input.name };
 }
 
 async function getProjects(input) {
   const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } } : undefined;
+    ? { property: "Status", select: { equals: input.status } }
+    : undefined;
+
   const response = await notion.databases.query({
-    database_id: PROJECTS_DB, filter,
-    sorts: [{ property: "Deadline", direction: "ascending" }], page_size: 20,
+    database_id: PROJECTS_DB,
+    filter,
+    sorts: [{ property: "Deadline", direction: "ascending" }],
+    page_size: 20,
   });
-  return response.results.map(p => ({
-    name:     p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status:   p.properties["Status"]?.select?.name || "—",
+
+  return response.results.map((p) => ({
+    name: p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed",
+    status: p.properties["Status"]?.select?.name || "—",
     deadline: p.properties["Deadline"]?.date?.start || "—",
-    value:    p.properties["Project Value"]?.number || null,
-    payment:  p.properties["Payment Status"]?.select?.name || "—",
+    value: p.properties["Project Value"]?.number || null,
+    payment: p.properties["Payment Status"]?.select?.name || "—",
   }));
 }
 
@@ -140,33 +160,39 @@ async function getDashboardSummary() {
     notion.databases.query({ database_id: CLIENTS_DB, page_size: 50 }),
     notion.databases.query({ database_id: PROJECTS_DB, page_size: 50 }),
   ]);
+
   const clients = allClients.results;
   const projects = allProjects.results;
-  const activeClients = clients.filter(p => p.properties["Status"]?.select?.name === "Active").length;
-  const leads = clients.filter(p => p.properties["Status"]?.select?.name === "Lead").length;
-  const inProgress = projects.filter(p => p.properties["Status"]?.select?.name === "In Progress").length;
-  const unpaidProjects = projects.filter(p => p.properties["Payment Status"]?.select?.name === "Unpaid");
+
+  const activeClients = clients.filter((p) => p.properties["Status"]?.select?.name === "Active").length;
+  const leads = clients.filter((p) => p.properties["Status"]?.select?.name === "Lead").length;
+  const inProgress = projects.filter((p) => p.properties["Status"]?.select?.name === "In Progress").length;
+  const unpaidProjects = projects.filter((p) => p.properties["Payment Status"]?.select?.name === "Unpaid");
   const pendingValue = unpaidProjects.reduce((sum, p) => sum + (p.properties["Project Value"]?.number || 0), 0);
+
   return {
-    active_clients: activeClients, leads,
-    projects_in_progress: inProgress, total_projects: projects.length,
+    active_clients: activeClients,
+    leads,
+    projects_in_progress: inProgress,
+    total_projects: projects.length,
     pending_payment_value: pendingValue,
-    unpaid_projects: unpaidProjects.map(p => p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed"),
+    unpaid_projects: unpaidProjects.map(
+      (p) => p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed"
+    ),
   };
 }
 
 async function executeTool(name, input) {
   switch (name) {
-    case "add_client":            return await addClient(input);
-    case "get_clients":           return await getClients(input);
-    case "add_project":           return await addProject(input);
-    case "get_projects":          return await getProjects(input);
+    case "add_client": return await addClient(input);
+    case "get_clients": return await getClients(input);
+    case "add_project": return await addProject(input);
+    case "get_projects": return await getProjects(input);
     case "get_dashboard_summary": return await getDashboardSummary();
     default: return { error: "Unknown tool" };
   }
 }
 
-// ── SYSTEM PROMPT ──────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are the Agency OS Agent for Harshada Solutions — a WhatsApp AI assistant that manages the agency's Notion workspace in real time.
 
 You have live access to the Clients CRM and Projects database in Notion. You can add, read and summarise data instantly.
@@ -185,24 +211,54 @@ REPLY RULES (this is WhatsApp):
 - Be warm and direct — like texting a smart assistant
 - After adding something, always say which Notion database it went into`;
 
-// ── TWILIO HELPER ──────────────────────────────────────────────────────────────
 function twilioXml(msg) {
-  // Escape XML special chars
-  const safe = msg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safe = msg
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safe}</Message></Response>`;
 }
 
-// ── MAIN HANDLER ───────────────────────────────────────────────────────────────
+// NEW: always log incoming WhatsApp message first
+async function autoLogLead({ from, message }) {
+  try {
+    await notion.pages.create({
+      parent: { database_id: CLIENTS_DB },
+      properties: {
+        "Name": {
+          title: [{ text: { content: `WhatsApp Lead ${from || "Unknown"}` } }]
+        },
+        "Status": {
+          select: { name: "Lead" }
+        },
+        "WhatsApp": {
+          phone_number: from || ""
+        },
+        "Notes": {
+          rich_text: [{ text: { content: message || "" } }]
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Auto lead log failed:", err);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
 
   const incomingMsg = req.body?.Body?.trim();
+  const from = req.body?.From?.trim();
+
   if (!incomingMsg) {
     res.setHeader("Content-Type", "text/xml");
     return res.status(200).send(twilioXml("Hey! Send me a message to get started 👋"));
   }
 
   try {
+    // log every incoming message as a lead first
+    await autoLogLead({ from, message: incomingMsg });
+
     let messages = [{ role: "user", content: incomingMsg }];
     let finalReply = "";
 
@@ -216,20 +272,35 @@ export default async function handler(req, res) {
       });
 
       if (response.stop_reason === "end_turn") {
-        finalReply = response.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
+        finalReply = response.content
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .trim();
         break;
       }
 
       if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
+        const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
         const toolResults = [];
+
         for (const t of toolUseBlocks) {
           const result = await executeTool(t.name, t.input);
-          toolResults.push({ type: "tool_result", tool_use_id: t.id, content: JSON.stringify(result) });
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: t.id,
+            content: JSON.stringify(result),
+          });
         }
-        messages = [...messages, { role: "assistant", content: response.content }, { role: "user", content: toolResults }];
+
+        messages = [
+          ...messages,
+          { role: "assistant", content: response.content },
+          { role: "user", content: toolResults },
+        ];
         continue;
       }
+
       break;
     }
 
