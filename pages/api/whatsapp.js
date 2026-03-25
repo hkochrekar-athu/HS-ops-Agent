@@ -249,6 +249,7 @@ export default async function handler(req, res) {
 
   const incomingMsg = req.body?.Body?.trim();
   const from = req.body?.From?.trim();
+  const OWNER_NUMBER = "whatsapp:+918830635281";
 
   if (!incomingMsg) {
     res.setHeader("Content-Type", "text/xml");
@@ -256,9 +257,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // log every incoming message as a lead first
-    await autoLogLead({ from, message: incomingMsg });
-
+// Only log as lead if NOT owner
+if (from !== OWNER_NUMBER) {
+  await autoLogLead({ from, message: incomingMsg });
+}
     let messages = [{ role: "user", content: incomingMsg }];
     let finalReply = "";
 
