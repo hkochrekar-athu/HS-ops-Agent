@@ -1,11 +1,10 @@
 // pages/api/whatsapp.js
 // WhatsApp webhook — Twilio receives message, Claude + Notion handles it
 
-const Anthropic = require('@anthropic-ai/sdk');
-const { Client } = require('@notionhq/client');
+import Anthropic from '@anthropic-ai/sdk';
+import { Client } from '@notionhq/client';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const notion = new Client({ auth: process.env.NOTION_SECRET });
 
 const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
