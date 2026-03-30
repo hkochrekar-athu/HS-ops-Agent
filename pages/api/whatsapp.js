@@ -1,303 +1,434 @@
-// pages/api/whatsapp.js
-// WhatsApp webhook — Twilio receives message, Claude + Notion handles it
+import Anthropic from "@anthropic-ai/sdk";
+import { Client } from "@notionhq/client";
 
-import Anthropic from '@anthropic-ai/sdk';
-import { Client } from '@notionhq/client';
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const notion = new Client({
+  auth: process.env.NOTION_SECRET,
+});
 
 const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
+const INVOICES_DB = process.env.NOTION_INVOICES_DB_ID;
 
-// ── TOOLS ─────────────────────────────────────────────────────────────────────
+const OWNER_NUMBER = "whatsapp:+918830635281";
+
 const tools = [
   {
     name: "add_client",
-    description: "Add a new client to the Notion CRM database.",
+    description: "Add a new client to the CRM database.",
     input_schema: {
       type: "object",
       properties: {
         name: { type: "string" },
-        status: { type: "string", enum: ["Active", "Lead", "Paused", "Completed"] },
-        business_type: { type: "string" },
-        contact_name: { type: "string" },
-        whatsapp: { type: "string" },
-        location: { type: "string" },
-        retainer: { type: "number" },
-        notes: { type: "string" },
+        status: {
+          type: "string",
+          enum: ["Active", "Lead", "Paused", "Completed"],
+        },
+        phone: { type: "string" },
+        deal_value: { type: "number" },
+        last_contacted: { type: "string", description: "YYYY-MM-DD" },
+        next_action: { type: "string" },
       },
       required: ["name"],
     },
   },
   {
     name: "get_clients",
-    description: "Fetch clients from the Notion CRM.",
+    description: "Fetch clients from CRM database.",
     input_schema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ["Active", "Lead", "Paused", "Completed", "all"] },
+        status: {
+          type: "string",
+          enum: ["Active", "Lead", "Paused", "Completed", "all"],
+        },
       },
       required: [],
     },
   },
   {
     name: "add_project",
-    description: "Add a new project to Notion Projects database.",
+    description: "Add a project to the Projects database.",
     input_schema: {
       type: "object",
       properties: {
         name: { type: "string" },
-        client_name: { type: "string" },
-        status: { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold"] },
-        service_type: { type: "string" },
-        deadline: { type: "string" },
-        value: { type: "number" },
-        payment_status: { type: "string", enum: ["Unpaid", "50% Paid", "Fully Paid"] },
-        notes: { type: "string" },
+        status: {
+          type: "string",
+          enum: ["Not Started", "In Progress", "Completed", "Paused"],
+        },
+        due_date: { type: "string", description: "YYYY-MM-DD" },
+        budget: { type: "number" },
       },
       required: ["name"],
     },
   },
   {
     name: "get_projects",
-    description: "Fetch projects from Notion.",
+    description: "Fetch projects from Projects database.",
     input_schema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold", "all"] },
+        status: {
+          type: "string",
+          enum: ["Not Started", "In Progress", "Completed", "Paused", "all"],
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_invoices",
+    description: "Fetch invoices from Invoices database.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["Paid", "Pending", "Overdue", "all"],
+        },
       },
       required: [],
     },
   },
   {
     name: "get_dashboard_summary",
-    description: "Get a full agency summary — active clients, projects, pending payments.",
-    input_schema: { type: "object", properties: {}, required: [] },
+    description: "Get dashboard summary from Clients, Projects, and Invoices.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
   },
 ];
 
-// ── NOTION ACTIONS ─────────────────────────────────────────────────────────────
+function escapeXml(text = "") {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function twilioXml(message) {
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(
+    message
+  )}</Message></Response>`;
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function addClient(input) {
-  const props = { "Name": { title: [{ text: { content: input.name } }] } };
-  if (input.status) props["Status"] = { select: { name: input.status } };
-  if (input.business_type) props["Business Type"] = { select: { name: input.business_type } };
-  if (input.contact_name) props["Contact Name"] = { rich_text: [{ text: { content: input.contact_name } }] };
-  if (input.whatsapp) props["WhatsApp"] = { phone_number: input.whatsapp };
-  if (input.location) props["Location"] = { rich_text: [{ text: { content: input.location } }] };
-  if (input.retainer) props["Monthly Retainer"] = { number: input.retainer };
-  if (input.notes) props["Notes"] = { rich_text: [{ text: { content: input.notes } }] };
+  if (!CLIENTS_DB) throw new Error("NOTION_CLIENTS_DB_ID is missing");
+
+  const properties = {
+    Name: {
+      title: [{ text: { content: input.name.trim() } }],
+    },
+  };
+
+  if (input.status) {
+    properties["Status"] = { select: { name: input.status } };
+  }
+
+  if (input.phone) {
+    properties["Phone"] = { phone_number: input.phone };
+  }
+
+  if (typeof input.deal_value === "number") {
+    properties["Deal Value"] = { number: input.deal_value };
+  }
+
+  if (input.last_contacted) {
+    properties["Last Contacted"] = { date: { start: input.last_contacted } };
+  }
+
+  if (input.next_action) {
+    properties["Next Action"] = {
+      rich_text: [{ text: { content: input.next_action } }],
+    };
+  }
 
   const page = await notion.pages.create({
     parent: { database_id: CLIENTS_DB },
-    properties: props,
+    properties,
   });
 
-  return { success: true, id: page.id, name: input.name };
+  return {
+    success: true,
+    id: page.id,
+    name: input.name,
+  };
 }
 
-async function getClients(input) {
-  const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } }
-    : undefined;
+async function getClients(input = {}) {
+  if (!CLIENTS_DB) throw new Error("NOTION_CLIENTS_DB_ID is missing");
+
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
 
   const response = await notion.databases.query({
     database_id: CLIENTS_DB,
     filter,
-    sorts: [{ property: "Name", direction: "ascending" }],
-    page_size: 20,
+    page_size: 50,
   });
 
-  return response.results.map((p) => ({
-    name: p.properties["Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status: p.properties["Status"]?.select?.name || "—",
-    type: p.properties["Business Type"]?.select?.name || "—",
-    location: p.properties["Location"]?.rich_text?.[0]?.text?.content || "—",
-    retainer: p.properties["Monthly Retainer"]?.number || null,
+  return response.results.map((page) => ({
+    name: page.properties["Name"]?.title?.[0]?.plain_text || "Unnamed",
+    status: page.properties["Status"]?.select?.name || "—",
+    phone: page.properties["Phone"]?.phone_number || "—",
+    deal_value: page.properties["Deal Value"]?.number ?? null,
+    last_contacted: page.properties["Last Contacted"]?.date?.start || "—",
+    next_action:
+      page.properties["Next Action"]?.rich_text?.[0]?.plain_text || "—",
   }));
 }
 
 async function addProject(input) {
-  const props = { "Project Name": { title: [{ text: { content: input.name } }] } };
-  if (input.status) props["Status"] = { select: { name: input.status || "Not Started" } };
-  if (input.service_type) props["Service Type"] = { select: { name: input.service_type } };
-  if (input.deadline) props["Deadline"] = { date: { start: input.deadline } };
-  if (input.value) props["Project Value"] = { number: input.value };
-  if (input.payment_status) props["Payment Status"] = { select: { name: input.payment_status || "Unpaid" } };
-  if (input.notes) props["Notes"] = { rich_text: [{ text: { content: input.notes } }] };
+  if (!PROJECTS_DB) throw new Error("NOTION_PROJECTS_DB_ID is missing");
+
+  const properties = {
+    "Project Name": {
+      title: [{ text: { content: input.name.trim() } }],
+    },
+  };
+
+  if (input.status) {
+    properties["Status"] = { select: { name: input.status } };
+  }
+
+  if (input.due_date) {
+    properties["Due Date"] = { date: { start: input.due_date } };
+  }
+
+  if (typeof input.budget === "number") {
+    properties["Budget"] = { number: input.budget };
+  }
 
   const page = await notion.pages.create({
     parent: { database_id: PROJECTS_DB },
-    properties: props,
+    properties,
   });
 
-  return { success: true, id: page.id, name: input.name };
+  return {
+    success: true,
+    id: page.id,
+    name: input.name,
+  };
 }
 
-async function getProjects(input) {
-  const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } }
-    : undefined;
+async function getProjects(input = {}) {
+  if (!PROJECTS_DB) throw new Error("NOTION_PROJECTS_DB_ID is missing");
+
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
 
   const response = await notion.databases.query({
     database_id: PROJECTS_DB,
     filter,
-    sorts: [{ property: "Deadline", direction: "ascending" }],
-    page_size: 20,
+    page_size: 50,
   });
 
-  return response.results.map((p) => ({
-    name: p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status: p.properties["Status"]?.select?.name || "—",
-    deadline: p.properties["Deadline"]?.date?.start || "—",
-    value: p.properties["Project Value"]?.number || null,
-    payment: p.properties["Payment Status"]?.select?.name || "—",
+  return response.results.map((page) => ({
+    name: page.properties["Project Name"]?.title?.[0]?.plain_text || "Unnamed",
+    status: page.properties["Status"]?.select?.name || "—",
+    due_date: page.properties["Due Date"]?.date?.start || "—",
+    budget: page.properties["Budget"]?.number ?? null,
+  }));
+}
+
+async function getInvoices(input = {}) {
+  if (!INVOICES_DB) throw new Error("NOTION_INVOICES_DB_ID is missing");
+
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
+
+  const response = await notion.databases.query({
+    database_id: INVOICES_DB,
+    filter,
+    page_size: 50,
+  });
+
+  return response.results.map((page) => ({
+    invoice_no:
+      page.properties["Invoices No"]?.title?.[0]?.plain_text || "Unnamed",
+    status: page.properties["Status"]?.select?.name || "—",
+    client:
+      page.properties["Clients"]?.rich_text?.[0]?.plain_text ||
+      page.properties["Clients"]?.title?.[0]?.plain_text ||
+      "—",
+    phone: page.properties["Phone"]?.phone_number || "—",
   }));
 }
 
 async function getDashboardSummary() {
-  const [allClients, allProjects] = await Promise.all([
-    notion.databases.query({ database_id: CLIENTS_DB, page_size: 50 }),
-    notion.databases.query({ database_id: PROJECTS_DB, page_size: 50 }),
+  if (!CLIENTS_DB || !PROJECTS_DB || !INVOICES_DB) {
+    throw new Error("One or more DB IDs are missing");
+  }
+
+  const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
+    notion.databases.query({ database_id: CLIENTS_DB, page_size: 100 }),
+    notion.databases.query({ database_id: PROJECTS_DB, page_size: 100 }),
+    notion.databases.query({ database_id: INVOICES_DB, page_size: 100 }),
   ]);
 
-  const clients = allClients.results;
-  const projects = allProjects.results;
+  const clients = clientsRes.results;
+  const projects = projectsRes.results;
+  const invoices = invoicesRes.results;
 
-  const activeClients = clients.filter((p) => p.properties["Status"]?.select?.name === "Active").length;
-  const leads = clients.filter((p) => p.properties["Status"]?.select?.name === "Lead").length;
-  const inProgress = projects.filter((p) => p.properties["Status"]?.select?.name === "In Progress").length;
-  const unpaidProjects = projects.filter((p) => p.properties["Payment Status"]?.select?.name === "Unpaid");
-  const pendingValue = unpaidProjects.reduce((sum, p) => sum + (p.properties["Project Value"]?.number || 0), 0);
+  const activeClients = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Active"
+  ).length;
+
+  const leads = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Lead"
+  ).length;
+
+  const pausedClients = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Paused"
+  ).length;
+
+  const projectsInProgress = projects.filter(
+    (p) => p.properties["Status"]?.select?.name === "In Progress"
+  ).length;
+
+  const completedProjects = projects.filter(
+    (p) => p.properties["Status"]?.select?.name === "Completed"
+  ).length;
+
+  const overdueInvoices = invoices.filter(
+    (p) => p.properties["Status"]?.select?.name === "Overdue"
+  ).length;
+
+  const pendingInvoices = invoices.filter(
+    (p) => p.properties["Status"]?.select?.name === "Pending"
+  ).length;
 
   return {
     active_clients: activeClients,
     leads,
-    projects_in_progress: inProgress,
-    total_projects: projects.length,
-    pending_payment_value: pendingValue,
-    unpaid_projects: unpaidProjects.map(
-      (p) => p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed"
-    ),
+    paused_clients: pausedClients,
+    projects_in_progress: projectsInProgress,
+    completed_projects: completedProjects,
+    overdue_invoices: overdueInvoices,
+    pending_invoices: pendingInvoices,
   };
 }
 
 async function executeTool(name, input) {
-  switch (name) {
-    case "add_client": return await addClient(input);
-    case "get_clients": return await getClients(input);
-    case "add_project": return await addProject(input);
-    case "get_projects": return await getProjects(input);
-    case "get_dashboard_summary": return await getDashboardSummary();
-    default: return { error: "Unknown tool" };
+  try {
+    switch (name) {
+      case "add_client":
+        return await addClient(input);
+      case "get_clients":
+        return await getClients(input || {});
+      case "add_project":
+        return await addProject(input);
+      case "get_projects":
+        return await getProjects(input || {});
+      case "get_invoices":
+        return await getInvoices(input || {});
+      case "get_dashboard_summary":
+        return await getDashboardSummary();
+      default:
+        return { error: `Unknown tool: ${name}` };
+    }
+  } catch (error) {
+    console.error(`Tool error in ${name}:`, error);
+    return { error: error.message || "Tool execution failed" };
+  }
+}
+
+async function autoLogLead({ from, message }) {
+  try {
+    if (!CLIENTS_DB) return;
+
+    await notion.pages.create({
+      parent: { database_id: CLIENTS_DB },
+      properties: {
+        Name: {
+          title: [{ text: { content: `WhatsApp Lead ${from}` } }],
+        },
+        Status: {
+          select: { name: "Lead" },
+        },
+        Phone: {
+          phone_number: from.replace("whatsapp:", ""),
+        },
+        "Last Contacted": {
+          date: { start: todayISO() },
+        },
+        "Next Action": {
+          rich_text: [
+            {
+              text: {
+                content: message
+                  ? `Review incoming message: ${message.slice(0, 150)}`
+                  : "Review incoming WhatsApp lead",
+              },
+            },
+          ],
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Auto lead log failed:", error);
   }
 }
 
 const SYSTEM_PROMPT = `
-You are the Harshada Solutions Ops Agent.
+You are the Harshada Solutions Ops Agent for WhatsApp.
 
-You are NOT a chatbot.
-You are an EXECUTION ENGINE.
+You have live access to:
+- Clients CRM
+- Projects
+- Invoices
 
-CRITICAL RULES:
-- NEVER ask questions
-- NEVER ask for missing information
-- ALWAYS take action immediately
-- ALWAYS assume missing details intelligently
-- ALWAYS confirm what was done
-
-BEHAVIOR:
-If user gives ANY business intent → you MUST create a client
-
-Examples of inputs you MUST handle without questions:
-- "I need a chatbot for a hotel in Goa, budget 30k"
-- "Sona Hotel, Sweety, 9822316308"
-- "New client Taj Hotel Goa"
-
-DEFAULT ASSUMPTIONS:
-- status = Lead
-- business_type = infer from message (hotel → Hotel, clinic → Healthcare, etc.)
-- location = Goa if not specified
-- notes = full message
-- whatsapp = sender number if not provided
-
-OUTPUT STYLE:
-- Max 2 lines
-- No explanations
-- No questions
-
-EXAMPLES:
-
-User: "I need a chatbot for a hotel in Goa, budget 30k"
-→ Action:
-- add_client
-
-Reply:
-"✅ Lead added to Notion CRM (Hotel · ₹30k chatbot)"
-
-User: "Sona Hotel, Sweety, 9822316308"
-→ Action:
-- add_client
-
-Reply:
-"✅ Client added to Notion CRM (Sona Hotel)"
-
-User: "No just update this much"
-→ DO NOT ask anything
-→ Just confirm
-
-Reply:
-"✅ Details updated"
+Rules:
+- Keep replies short and operational
+- Use tools whenever the user asks about clients, projects, invoices, or summary
+- Never invent Notion data
+- If a user asks to add a client or project, use the correct tool
 `;
-function twilioXml(msg) {
-  const safe = msg
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safe}</Message></Response>`;
-}
-
-// NEW: always log incoming WhatsApp message first
-async function autoLogLead({ from, message }) {
-  try {
-    await notion.pages.create({
-      parent: { database_id: CLIENTS_DB },
-      properties: {
-        "Name": {
-          title: [{ text: { content: `WhatsApp Lead ${from || "Unknown"}` } }]
-        },
-        "Status": {
-          select: { name: "Lead" }
-        },
-        "WhatsApp": {
-          phone_number: from || ""
-        },
-        "Notes": {
-          rich_text: [{ text: { content: message || "" } }]
-        }
-      }
-    });
-  } catch (err) {
-    console.error("Auto lead log failed:", err);
-  }
-}
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).send("Method not allowed");
+  if (req.method !== "POST") {
+    return res.status(405).send("Method not allowed");
+  }
 
   const incomingMsg = req.body?.Body?.trim();
   const from = req.body?.From?.trim();
-  const OWNER_NUMBER = "whatsapp:+918830635281";
 
   if (!incomingMsg) {
     res.setHeader("Content-Type", "text/xml");
-    return res.status(200).send(twilioXml("Hey! Send me a message to get started 👋"));
+    return res.status(200).send(twilioXml("Send me a message to get started."));
   }
 
   try {
-// Only log as lead if NOT owner
-if (from !== OWNER_NUMBER) {
-  await autoLogLead({ from, message: incomingMsg });
-}
+    if (from !== OWNER_NUMBER) {
+      await autoLogLead({ from, message: incomingMsg });
+    }
+
     let messages = [{ role: "user", content: incomingMsg }];
     let finalReply = "";
 
@@ -320,14 +451,16 @@ if (from !== OWNER_NUMBER) {
       }
 
       if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
-        const toolResults = [];
+        const toolUseBlocks = response.content.filter(
+          (b) => b.type === "tool_use"
+        );
 
-        for (const t of toolUseBlocks) {
-          const result = await executeTool(t.name, t.input);
+        const toolResults = [];
+        for (const toolUse of toolUseBlocks) {
+          const result = await executeTool(toolUse.name, toolUse.input);
           toolResults.push({
             type: "tool_result",
-            tool_use_id: t.id,
+            tool_use_id: toolUse.id,
             content: JSON.stringify(result),
           });
         }
@@ -344,14 +477,22 @@ if (from !== OWNER_NUMBER) {
     }
 
     res.setHeader("Content-Type", "text/xml");
-    return res.status(200).send(twilioXml(finalReply || "Done! ✅ Check your Notion."));
-  } catch (err) {
-    console.error("WhatsApp agent error:", err);
+    return res
+      .status(200)
+      .send(twilioXml(finalReply || "Done. Check Notion."));
+  } catch (error) {
+    console.error("WhatsApp agent error:", error);
     res.setHeader("Content-Type", "text/xml");
-    return res.status(200).send(twilioXml("Something went wrong 🙏 Try again in a moment."));
+    return res
+      .status(200)
+      .send(twilioXml("Something went wrong. Try again in a moment."));
   }
 }
 
 export const config = {
-  api: { bodyParser: { type: "application/x-www-form-urlencoded" } },
+  api: {
+    bodyParser: {
+      type: "application/x-www-form-urlencoded",
+    },
+  },
 };
