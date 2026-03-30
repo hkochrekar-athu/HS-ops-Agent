@@ -1,84 +1,126 @@
-// pages/api/agent.js
-// Drop this into your existing hs-ops-agent Next.js project
-// replacing or alongside your existing API route
+import Anthropic from "@anthropic-ai/sdk";
+import { Client } from "@notionhq/client";
 
-const Anthropic = require('@anthropic-ai/sdk');
-const { Client } = require('@notionhq/client');
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const notion = new Client({ auth: process.env.NOTION_SECRET });
+const notion = new Client({
+  auth: process.env.NOTION_SECRET,
+});
 
 const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
+const INVOICES_DB = process.env.NOTION_INVOICES_DB_ID;
 
-// Validate on startup
-if (!CLIENTS_DB || !PROJECTS_DB) {
-  console.warn("WARNING: NOTION_CLIENTS_DB_ID or NOTION_PROJECTS_DB_ID not set in environment variables");
+if (!CLIENTS_DB || !PROJECTS_DB || !INVOICES_DB) {
+  console.warn(
+    "WARNING: One or more Notion DB IDs are missing. Check NOTION_CLIENTS_DB_ID, NOTION_PROJECTS_DB_ID, NOTION_INVOICES_DB_ID."
+  );
 }
 
-// ── NOTION TOOLS ──────────────────────────────────────────────────────────────
 const tools = [
   {
     name: "add_client",
-    description: "Add a new client to the Notion CRM database. Use when user says 'add client', 'new client', 'I have a new client' etc.",
+    description: "Add a new client to the CRM database.",
     input_schema: {
       type: "object",
       properties: {
-        name:         { type: "string", description: "Client or business name" },
-        status:       { type: "string", enum: ["Active", "Lead", "Paused", "Completed"], description: "Client status - default to Lead for new contacts" },
-        business_type:{ type: "string", description: "Type of business e.g. Restaurant, Real Estate, Hotel" },
-        contact_name: { type: "string", description: "Contact person's name" },
-        whatsapp:     { type: "string", description: "WhatsApp number" },
-        location:     { type: "string", description: "City or area" },
-        retainer:     { type: "number", description: "Monthly retainer amount in rupees" },
-        notes:        { type: "string", description: "Any additional notes" },
+        name: { type: "string", description: "Client or business name" },
+        status: {
+          type: "string",
+          enum: ["Active", "Lead", "Paused", "Completed"],
+          description: "Client status",
+        },
+        deal_value: {
+          type: "number",
+          description: "Deal value in rupees",
+        },
+        last_contacted: {
+          type: "string",
+          description: "Last contacted date in YYYY-MM-DD format",
+        },
+        next_action: {
+          type: "string",
+          description: "Next action for this client",
+        },
       },
       required: ["name"],
     },
   },
   {
     name: "get_clients",
-    description: "Fetch and list clients from the Notion CRM. Use when user asks 'show my clients', 'list clients', 'who are my clients', 'active clients' etc.",
+    description: "Fetch and list clients from the CRM database.",
     input_schema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ["Active", "Lead", "Paused", "Completed", "all"], description: "Filter by status. Use 'all' for everything." },
+        status: {
+          type: "string",
+          enum: ["Active", "Lead", "Paused", "Completed", "all"],
+          description: "Filter by status",
+        },
       },
       required: [],
     },
   },
   {
     name: "add_project",
-    description: "Add a new project to the Notion Projects database. Use when user says 'new project', 'add project', 'create project' etc.",
+    description: "Add a new project to the Projects database.",
     input_schema: {
       type: "object",
       properties: {
-        name:           { type: "string", description: "Project name" },
-        client_name:    { type: "string", description: "Client this project is for" },
-        status:         { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold"], description: "Project status" },
-        service_type:   { type: "string", description: "Type of service e.g. Chatbot, Website, Automation" },
-        deadline:       { type: "string", description: "Deadline date in YYYY-MM-DD format" },
-        value:          { type: "number", description: "Project value in rupees" },
-        payment_status: { type: "string", enum: ["Unpaid", "50% Paid", "Fully Paid"], description: "Payment status" },
-        notes:          { type: "string", description: "Project notes or deliverables" },
+        name: { type: "string", description: "Project name" },
+        client_name: {
+          type: "string",
+          description: "Client this project is for",
+        },
+        status: {
+          type: "string",
+          enum: ["Not Started", "In Progress", "Completed", "Paused"],
+          description: "Project status",
+        },
+        due_date: {
+          type: "string",
+          description: "Due date in YYYY-MM-DD format",
+        },
       },
       required: ["name"],
     },
   },
   {
     name: "get_projects",
-    description: "Fetch and list projects from Notion. Use when user asks 'show projects', 'what projects do I have', 'in progress projects', 'overdue projects' etc.",
+    description: "Fetch and list projects.",
     input_schema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ["Not Started", "In Progress", "Review", "Done", "On Hold", "all"], description: "Filter by status" },
+        status: {
+          type: "string",
+          enum: ["Not Started", "In Progress", "Completed", "Paused", "all"],
+          description: "Filter by project status",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_invoices",
+    description: "Fetch and list invoices.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["Paid", "Pending", "Overdue", "all"],
+          description: "Filter by invoice status",
+        },
       },
       required: [],
     },
   },
   {
     name: "get_dashboard_summary",
-    description: "Get a full summary of the agency — active clients, in-progress projects, pending payments. Use when user says 'dashboard', 'summary', 'how is my agency doing', 'what is on my plate' etc.",
+    description:
+      "Get a dashboard summary of clients, projects, and invoices.",
     input_schema: {
       type: "object",
       properties: {},
@@ -87,56 +129,87 @@ const tools = [
   },
 ];
 
-// ── NOTION ACTIONS ────────────────────────────────────────────────────────────
+async function findClientPageIdByName(clientName) {
+  if (!clientName || !CLIENTS_DB) return null;
+
+  const response = await notion.databases.query({
+    database_id: CLIENTS_DB,
+    filter: {
+      property: "Name",
+      title: {
+        equals: clientName,
+      },
+    },
+    page_size: 1,
+  });
+
+  return response.results[0]?.id || null;
+}
+
 async function addClient(input) {
-  // Add validation
-  if (!CLIENTS_DB) {
-    throw new Error("CLIENTS_DB environment variable is not set");
-  }
-  if (!input.name || input.name.trim() === "") {
-    throw new Error("Client name is required");
-  }
+  if (!CLIENTS_DB) throw new Error("CLIENTS_DB environment variable is not set");
+  if (!input.name?.trim()) throw new Error("Client name is required");
 
   const props = {
-    "Name": { title: [{ text: { content: input.name } }] },
+    Name: {
+      title: [{ text: { content: input.name.trim() } }],
+    },
   };
-  if (input.status)        props["Status"]          = { select: { name: input.status } };
-  if (input.business_type) props["Business Type"]   = { select: { name: input.business_type } };
-  if (input.contact_name)  props["Contact Name"]    = { rich_text: [{ text: { content: input.contact_name } }] };
-  if (input.whatsapp)      props["WhatsApp"]        = { phone_number: input.whatsapp };
-  if (input.location)      props["Location"]        = { rich_text: [{ text: { content: input.location } }] };
-  if (input.retainer)      props["Monthly Retainer"]= { number: input.retainer };
-  if (input.notes)         props["Notes"]           = { rich_text: [{ text: { content: input.notes } }] };
+
+  if (input.status) {
+    props["Status"] = { select: { name: input.status } };
+  }
+
+  if (typeof input.deal_value === "number") {
+    props["Deal Value"] = { number: input.deal_value };
+  }
+
+  if (input.last_contacted) {
+    props["Last Contacted"] = { date: { start: input.last_contacted } };
+  }
+
+  if (input.next_action) {
+    props["Next Action"] = {
+      rich_text: [{ text: { content: input.next_action } }],
+    };
+  }
 
   const page = await notion.pages.create({
     parent: { database_id: CLIENTS_DB },
     properties: props,
   });
-  return { success: true, id: page.id, name: input.name };
+
+  return {
+    success: true,
+    id: page.id,
+    name: input.name,
+  };
 }
 
 async function getClients(input) {
-  if (!CLIENTS_DB) {
-    throw new Error("CLIENTS_DB environment variable is not set");
-  }
+  if (!CLIENTS_DB) throw new Error("CLIENTS_DB environment variable is not set");
 
-  const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } }
-    : undefined;
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
 
   const response = await notion.databases.query({
     database_id: CLIENTS_DB,
     filter,
-    sorts: [{ property: "Name", direction: "ascending" }],
-    page_size: 20,
+    page_size: 50,
   });
 
-  return response.results.map(page => ({
-    name:     page.properties["Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status:   page.properties["Status"]?.select?.name || "—",
-    type:     page.properties["Business Type"]?.select?.name || "—",
-    location: page.properties["Location"]?.rich_text?.[0]?.text?.content || "—",
-    retainer: page.properties["Monthly Retainer"]?.number || null,
+  return response.results.map((page) => ({
+    name: page.properties["Name"]?.title?.[0]?.plain_text || "Unnamed",
+    status: page.properties["Status"]?.select?.name || "—",
+    deal_value: page.properties["Deal Value"]?.number ?? null,
+    last_contacted: page.properties["Last Contacted"]?.date?.start || "—",
+    next_action:
+      page.properties["Next Action"]?.rich_text?.[0]?.plain_text || "—",
   }));
 }
 
@@ -144,31 +217,41 @@ async function addProject(input) {
   if (!PROJECTS_DB) {
     throw new Error("PROJECTS_DB environment variable is not set");
   }
-  if (!input.name || input.name.trim() === "") {
-    throw new Error("Project name is required");
-  }
+  if (!input.name?.trim()) throw new Error("Project name is required");
 
   const props = {
-    "Project Name": { title: [{ text: { content: input.name } }] },
+    "Project Name": {
+      title: [{ text: { content: input.name.trim() } }],
+    },
   };
-  // Note: client_name should be linked if you have a relation field in Notion
-  // For now, storing it as notes if needed:
-  if (input.client_name && !input.notes) {
-    props["Notes"] = { rich_text: [{ text: { content: `Client: ${input.client_name}` } }] };
+
+  if (input.status) {
+    props["Status"] = { select: { name: input.status } };
   }
-  
-  if (input.status)         props["Status"]         = { select: { name: input.status || "Not Started" } };
-  if (input.service_type)   props["Service Type"]   = { select: { name: input.service_type } };
-  if (input.deadline)       props["Deadline"]       = { date: { start: input.deadline } };
-  if (input.value)          props["Project Value"]  = { number: input.value };
-  if (input.payment_status) props["Payment Status"] = { select: { name: input.payment_status || "Unpaid" } };
-  if (input.notes)          props["Notes"]          = { rich_text: [{ text: { content: input.notes } }] };
+
+  if (input.due_date) {
+    props["Due Date"] = { date: { start: input.due_date } };
+  }
+
+  if (input.client_name) {
+    const clientPageId = await findClientPageIdByName(input.client_name);
+    if (clientPageId) {
+      props["Client"] = {
+        relation: [{ id: clientPageId }],
+      };
+    }
+  }
 
   const page = await notion.pages.create({
     parent: { database_id: PROJECTS_DB },
     properties: props,
   });
-  return { success: true, id: page.id, name: input.name };
+
+  return {
+    success: true,
+    id: page.id,
+    name: input.name,
+  };
 }
 
 async function getProjects(input) {
@@ -176,125 +259,184 @@ async function getProjects(input) {
     throw new Error("PROJECTS_DB environment variable is not set");
   }
 
-  const filter = input.status && input.status !== "all"
-    ? { property: "Status", select: { equals: input.status } }
-    : undefined;
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
 
   const response = await notion.databases.query({
     database_id: PROJECTS_DB,
     filter,
-    sorts: [{ property: "Deadline", direction: "ascending" }],
-    page_size: 20,
+    page_size: 50,
   });
 
-  return response.results.map(page => ({
-    name:     page.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed",
-    status:   page.properties["Status"]?.select?.name || "—",
-    deadline: page.properties["Deadline"]?.date?.start || "—",
-    value:    page.properties["Project Value"]?.number || null,
-    payment:  page.properties["Payment Status"]?.select?.name || "—",
+  return response.results.map((page) => ({
+    name: page.properties["Project Name"]?.title?.[0]?.plain_text || "Unnamed",
+    client:
+      page.properties["Client"]?.relation?.length > 0
+        ? `${page.properties["Client"].relation.length} linked`
+        : "—",
+    status: page.properties["Status"]?.select?.name || "—",
+    due_date: page.properties["Due Date"]?.date?.start || "—",
+  }));
+}
+
+async function getInvoices(input) {
+  if (!INVOICES_DB) {
+    throw new Error("INVOICES_DB environment variable is not set");
+  }
+
+  const filter =
+    input.status && input.status !== "all"
+      ? {
+          property: "Status",
+          select: { equals: input.status },
+        }
+      : undefined;
+
+  const response = await notion.databases.query({
+    database_id: INVOICES_DB,
+    filter,
+    page_size: 50,
+  });
+
+  return response.results.map((page) => ({
+    invoice: page.properties["Invoice"]?.title?.[0]?.plain_text || "Unnamed",
+    client:
+      page.properties["Client"]?.relation?.length > 0
+        ? `${page.properties["Client"].relation.length} linked`
+        : "—",
+    amount: page.properties["Amount"]?.number ?? null,
+    status: page.properties["Status"]?.select?.name || "—",
   }));
 }
 
 async function getDashboardSummary() {
-  if (!CLIENTS_DB || !PROJECTS_DB) {
-    throw new Error("CLIENTS_DB or PROJECTS_DB environment variables are not set");
+  if (!CLIENTS_DB || !PROJECTS_DB || !INVOICES_DB) {
+    throw new Error("One or more DB environment variables are missing");
   }
 
-  const [allClients, allProjects] = await Promise.all([
-    notion.databases.query({ database_id: CLIENTS_DB, page_size: 50 }),
-    notion.databases.query({ database_id: PROJECTS_DB, page_size: 50 }),
+  const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
+    notion.databases.query({ database_id: CLIENTS_DB, page_size: 100 }),
+    notion.databases.query({ database_id: PROJECTS_DB, page_size: 100 }),
+    notion.databases.query({ database_id: INVOICES_DB, page_size: 100 }),
   ]);
 
-  const clients = allClients.results;
-  const projects = allProjects.results;
+  const clients = clientsRes.results;
+  const projects = projectsRes.results;
+  const invoices = invoicesRes.results;
 
-  const activeClients = clients.filter(p => p.properties["Status"]?.select?.name === "Active").length;
-  const leads = clients.filter(p => p.properties["Status"]?.select?.name === "Lead").length;
-  const inProgress = projects.filter(p => p.properties["Status"]?.select?.name === "In Progress").length;
-  const unpaidProjects = projects.filter(p => p.properties["Payment Status"]?.select?.name === "Unpaid");
-  const pendingValue = unpaidProjects.reduce((sum, p) => sum + (p.properties["Project Value"]?.number || 0), 0);
+  const activeClients = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Active"
+  ).length;
+
+  const leads = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Lead"
+  ).length;
+
+  const paused = clients.filter(
+    (p) => p.properties["Status"]?.select?.name === "Paused"
+  ).length;
+
+  const completedProjects = projects.filter(
+    (p) => p.properties["Status"]?.select?.name === "Completed"
+  ).length;
+
+  const inProgressProjects = projects.filter(
+    (p) => p.properties["Status"]?.select?.name === "In Progress"
+  ).length;
+
+  const overdueInvoices = invoices.filter(
+    (p) => p.properties["Status"]?.select?.name === "Overdue"
+  );
+
+  const pendingInvoices = invoices.filter(
+    (p) => p.properties["Status"]?.select?.name === "Pending"
+  );
+
+  const pendingInvoiceValue = pendingInvoices.reduce(
+    (sum, p) => sum + (p.properties["Amount"]?.number || 0),
+    0
+  );
 
   return {
     active_clients: activeClients,
     leads,
-    projects_in_progress: inProgress,
-    total_projects: projects.length,
-    pending_payment_value: pendingValue,
-    unpaid_projects: unpaidProjects.map(p => p.properties["Project Name"]?.title?.[0]?.text?.content || "Unnamed"),
+    paused_clients: paused,
+    projects_in_progress: inProgressProjects,
+    completed_projects: completedProjects,
+    overdue_invoices: overdueInvoices.length,
+    pending_invoice_value: pendingInvoiceValue,
   };
 }
 
-// ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function executeTool(name, input) {
   try {
     switch (name) {
-      case "add_client":          return await addClient(input);
-      case "get_clients":         return await getClients(input);
-      case "add_project":         return await addProject(input);
-      case "get_projects":        return await getProjects(input);
-      case "get_dashboard_summary": return await getDashboardSummary();
-      default: return { error: "Unknown tool" };
+      case "add_client":
+        return await addClient(input);
+      case "get_clients":
+        return await getClients(input || {});
+      case "add_project":
+        return await addProject(input);
+      case "get_projects":
+        return await getProjects(input || {});
+      case "get_invoices":
+        return await getInvoices(input || {});
+      case "get_dashboard_summary":
+        return await getDashboardSummary();
+      default:
+        return { error: "Unknown tool" };
     }
   } catch (error) {
     return { error: error.message || "Tool execution failed" };
   }
 }
 
-// ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are the Harshada Solutions Agency OS Agent — a powerful AI operations assistant for a Goa-based digital and AI agency.
+const SYSTEM_PROMPT = `
+You are the Harshada Solutions Ops Agent — an AI operations assistant for Harshada Solutions.
 
-You have direct access to the agency's Notion workspace. You can read and write to the Clients/CRM database and Projects database in real time.
+You have live access to Notion databases for:
+- CRM / Clients
+- Projects
+- Invoices
 
 YOUR CAPABILITIES:
-- Add new clients to the CRM
-- View and filter existing clients
-- Create new projects
-- View and filter projects
-- Give a full dashboard summary of the agency
+- Add and list clients
+- Add and list projects
+- List invoices
+- Give dashboard summaries
 
-YOUR PERSONALITY:
-- Warm, sharp and efficient — like a brilliant EA who knows the business inside out
-- Always confirm what you did after taking an action
-- If information is missing, make reasonable assumptions and mention them
-- Format lists cleanly using bullet points
-- Use ₹ for currency amounts
-- Always mention the Notion database when you create or update something
+RULES:
+- Always use live Notion tools when asked about clients, projects, invoices, or summaries
+- Never invent database results
+- Be concise, clear, and operational
+- Use ₹ for amounts where relevant
+- Confirm actions clearly after they happen
+`;
 
-AGENCY CONTEXT:
-- Agency: Harshada Solutions, Goa, India
-- Website: harshadasolutions.com (LIVE)
-- Digital products store: labs.harshadasolutions.com (Axiom Assets)
-- WhatsApp: +918830635281
-- Services: AI Chatbots, WhatsApp Automation, Website Design, Workflow Automation, Lead Generation, AI Strategy Sessions
-- Pricing: Rs12,000-25,000 setup, Rs3,000-5,000/month retainer
-- Owner: Harshada, solo founder in Goa serving local businesses (restaurants, real estate, hospitality) and global freelance clients
-- Digital products sold via Gumroad and Axiom Assets
-- Live products: Digital Clarity OS, AI Chatbot templates, Restaurant Website Template, AI Document Generator, Client Management Toolkit
-- Fiverr shop active with 5 gigs: AI Chatbot, Website Design, Pitch Deck, WhatsApp Automation, Notion Business System
-- Tagline: Goa to the World
-
-When users ask about clients or projects, always use the Notion tools to get live data — never make up information.
-When users want to add something, use the appropriate tool immediately.`;
-
-// ── MAIN HANDLER ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   const { messages } = req.body;
-  if (!messages?.length) return res.status(400).json({ error: "No messages provided" });
+  if (!messages?.length) {
+    return res.status(400).json({ error: "No messages provided" });
+  }
 
   try {
     let currentMessages = [...messages];
     let finalResponse = "";
 
-    // Agentic loop — keeps going until Claude stops using tools
     for (let i = 0; i < 5; i++) {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
@@ -304,25 +446,24 @@ export default async function handler(req, res) {
         messages: currentMessages,
       });
 
-      // If Claude is done — return the text response
       if (response.stop_reason === "end_turn") {
         finalResponse = response.content
-          .filter(b => b.type === "text")
-          .map(b => b.text)
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
           .join("");
-        
-        // Provide default response if empty
+
         if (!finalResponse) {
           finalResponse = "Action completed successfully.";
         }
         break;
       }
 
-      // If Claude wants to use tools
       if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter(b => b.type === "tool_use");
-        const toolResults = [];
+        const toolUseBlocks = response.content.filter(
+          (b) => b.type === "tool_use"
+        );
 
+        const toolResults = [];
         for (const toolUse of toolUseBlocks) {
           const result = await executeTool(toolUse.name, toolUse.input);
           toolResults.push({
@@ -332,7 +473,6 @@ export default async function handler(req, res) {
           });
         }
 
-        // Add Claude's response and tool results to message history
         currentMessages = [
           ...currentMessages,
           { role: "assistant", content: response.content },
@@ -341,15 +481,15 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // If neither end_turn nor tool_use, exit loop
       break;
     }
 
-    // Return the final response to client
-    return res.status(200).json({ response: finalResponse || "No response generated." });
-
+    return res.status(200).json({
+      response: finalResponse || "No response generated.",
+    });
   } catch (error) {
-    // Handle errors properly
-    return res.status(500).json({ error: error.message || "Internal server error" });
+    return res.status(500).json({
+      error: error.message || "Internal server error",
+    });
   }
 }
