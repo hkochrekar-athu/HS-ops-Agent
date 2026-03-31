@@ -258,7 +258,7 @@ async function queryNotionDatabase(databaseType) {
 function getPropertyValue(properties, propName) {
   const prop = properties[propName];
   if (!prop) return null;
-  if (prop.type === 'title') return prop.title[0]?.plain_text || '';
+  if (prop.type === 'title') return prop.title?.[0]?.plain_text || '';
   if (prop.type === 'rich_text') return prop.rich_text[0]?.plain_text || '';
   if (prop.type === 'phone_number') return prop.phone_number || '';
   if (prop.type === 'number') return prop.number;
