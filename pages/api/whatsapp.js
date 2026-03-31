@@ -141,11 +141,20 @@ const TOOLS = [
 // ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function runTool(name, input) {
   const IDS = {
-    crm: process.env.NOTION_CLIENTS_DB_ID || process.env.NOTION_CRM_DB_ID,
-    projects: process.env.NOTION_PROJECTS_DB_ID,
-    invoices: process.env.NOTION_INVOICES_DB_ID,
-  };
+    const IDS = {
+  crm:
+    process.env.NOTION_CLIENTS_DATABASE_ID ||
+    process.env.NOTION_CLIENTS_DB_ID ||
+    process.env.NOTION_CRM_DB_ID,
 
+  projects:
+    process.env.NOTION_PROJECTS_DATABASE_ID ||
+    process.env.NOTION_PROJECTS_DB_ID,
+
+  invoices:
+    process.env.NOTION_INVOICES_DATABASE_ID ||
+    process.env.NOTION_INVOICES_DB_ID,
+};
   try {
     if (name === "add_client") {
       if (!IDS.crm) return { ok: false, error: "CRM DB not connected" };
