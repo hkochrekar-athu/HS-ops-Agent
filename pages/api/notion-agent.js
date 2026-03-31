@@ -217,7 +217,7 @@ async function addProject(input) {
   if (!PROJECTS_DB) {
     throw new Error("PROJECTS_DB environment variable is not set");
   }
-  if (!input.name?.trim()) throw new Error("Project name is required");
+  if (!input.name?.trim()) throw new Error("Project Name is required");
 
   const props = {
     "Project Name": {
