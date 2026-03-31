@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>HS-Agency OS · Harshada Solutions</title>
+<title>HS Ops Agent· Harshada Solutions</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -220,10 +220,11 @@ async function loadData() {
 
   PROJECTS = projects.results?.map(p => ({
     id: p.id,
-    name: getPropertyValue(p.properties, 'Project name'),
-    client: getPropertyValue(p.properties, 'Client'),
+    name: getPropertyValue(p.properties, 'Project Name'),
+    client: getPropertyValue(p.properties, 'Clients'),
     status: getPropertyValue(p.properties, 'Status'),
-    due: getPropertyValue(p.properties, 'Due date'),
+    due: getPropertyValue(p.properties, 'Due Date'),
+    budget: getPropertyValue(p.properties, 'Budget'),
   })).filter(p => p.name) || [];
 
   INVOICES = invoices.results?.map(p => ({
