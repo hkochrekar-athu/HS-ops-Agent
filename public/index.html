@@ -284,8 +284,8 @@ async function loadNotionData() {
 const clientsRes = await queryNotionDatabase('clients');
   CRM_DATA = clientsRes.results.map(page => ({
     id: page.id,
-    name: getPropertyValue(page.properties, 'Client name'),
-    status: getPropertyValue(page.properties, 'status'),
+    name: getPropertyValue(page.properties, 'Client Name'),
+    status: getPropertyValue(page.properties, 'Status'),
     phone: getPropertyValue(page.properties, 'Phone'),
     value: getPropertyValue(page.properties, 'Deal Value'),
     lastContacted: getPropertyValue(page.properties, 'Last Contacted'),
