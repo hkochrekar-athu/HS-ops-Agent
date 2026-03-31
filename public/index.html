@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AI-Powered Agency OS · Harshada Solutions</title>
+<title>HS Agency OS · Harshada Solutions</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -21,17 +21,15 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Geist',system-ui}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:translateX(0);opacity:1}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 
-/* ── LAYOUT ── */
 .app{display:flex;height:100vh;overflow:hidden}
 .sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .topbar{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;background:var(--surface);flex-shrink:0}
 .content{flex:1;overflow-y:auto;padding:28px 28px}
 
-/* ── SIDEBAR ── */
 .sidebar-brand{padding:16px 14px 10px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border)}
 .brand-icon{width:28px;height:28px;border-radius:7px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Instrument Serif',serif;font-size:14px;font-style:italic;flex-shrink:0}
 .brand-name{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
@@ -42,7 +40,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Geist',
 .nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink2);transition:all .15s;margin-bottom:1px;user-select:none}
 .nav-item:hover{background:var(--bg3);color:var(--ink)}
 .nav-item.active{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.nav-item .nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
 .nav-count{margin-left:auto;background:var(--bg3);color:var(--ink3);font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:10px}
 
 .sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--border)}
@@ -51,103 +49,91 @@ html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Geist',
 .user-name{font-size:12px;font-weight:500;color:var(--ink)}
 .user-role{font-size:10px;color:var(--ink3);font-family:'DM Mono',monospace}
 
-/* ── TOPBAR ── */
 .page-title{font-family:'Instrument Serif',serif;font-size:17px;color:var(--ink);font-style:italic}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.tb-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
-.tb-btn.primary{background:var(--ink);color:#fff}
-.tb-btn.primary:hover{background:var(--ink2)}
-.tb-btn.ghost{background:none;border:1px solid var(--border);color:var(--ink2)}
-.tb-btn.ghost:hover{background:var(--bg2)}
+.tb-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;background:none;border:1px solid var(--border);color:var(--ink2)}
+.tb-btn.primary{background:var(--ink);color:#fff;border:none}
+.tb-btn:hover{background:var(--bg2)}
 
-/* ── PAGE ── */
 .page-header{margin-bottom:22px;animation:fadeIn .3s ease}
 .page-emoji{font-size:28px;margin-bottom:8px}
 .page-h1{font-family:'Instrument Serif',serif;font-size:28px;font-style:italic;color:var(--ink);letter-spacing:-.02em;margin-bottom:4px}
 .page-desc{font-size:13px;color:var(--ink3);line-height:1.6}
 
-/* ── STATS ROW ── */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:22px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;animation:fadeIn .4s ease}
 .stat-val{font-family:'Instrument Serif',serif;font-size:26px;color:var(--ink);font-style:italic;margin-bottom:2px}
 .stat-label{font-size:10px;color:var(--ink3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
-.stat-delta{font-size:10px;color:var(--accent);margin-top:4px;font-family:'DM Mono',monospace}
 
-/* ── TABLE ── */
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:fadeIn .4s ease .1s both}
 .table-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .table-title{font-size:13px;font-weight:500;color:var(--ink)}
-.table-actions{display:flex;gap:6px}
 table{width:100%;border-collapse:collapse}
 th{padding:9px 14px;text-align:left;font-size:10px;font-weight:500;color:var(--ink3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);background:var(--surface2)}
 td{padding:10px 14px;font-size:13px;color:var(--ink2);border-bottom:1px solid var(--border)}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg)}
+
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:500;font-family:'DM Mono',monospace}
 .badge.green{background:var(--accentBg);color:var(--accent)}
 .badge.red{background:var(--redBg);color:var(--red)}
 .badge.amber{background:var(--amberBg);color:var(--amber)}
 .badge.blue{background:var(--blueBg);color:var(--blue)}
-.badge.purple{background:var(--purpleBg);color:var(--purple)}
 .badge.grey{background:var(--bg3);color:var(--ink3)}
 .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
 
-/* ── KANBAN ── */
 .kanban{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;animation:fadeIn .3s ease}
 .kanban-col{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px}
 .col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .col-title{font-size:11px;font-weight:600;color:var(--ink2);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
 .col-count{background:var(--bg3);color:var(--ink3);font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:8px}
-.kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:all .2s;animation:slideIn .3s ease}
+.kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:all .2s}
 .kanban-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.06);transform:translateY(-1px)}
-.card-title{font-size:12.5px;font-weight:500;color:var(--ink);margin-bottom:6px;line-height:1.4}
-.card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.card-tag{font-size:9px;padding:2px 7px;border-radius:10px;font-family:'DM Mono',monospace}
-.card-due{font-size:9px;color:var(--ink3);font-family:'DM Mono',monospace;margin-left:auto}
-.card-avatar{width:18px;height:18px;border-radius:50%;background:var(--ink);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.card-title{font-size:12.5px;font-weight:500;color:var(--ink);margin-bottom:6px}
 
-/* ── CALENDAR ── */
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;animation:fadeIn .3s ease}
-.cal-day-header{text-align:center;font-size:9px;font-weight:500;color:var(--ink3);font-family:'DM Mono',monospace;text-transform:uppercase;padding-bottom:6px}
-.cal-cell{background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:80px;padding:8px;cursor:pointer;transition:border-color .2s}
-.cal-cell:hover{border-color:var(--border2)}
-.cal-cell.today{border-color:var(--accent);background:var(--accentBg)}
-.cal-cell.empty{background:var(--surface2);cursor:default}
-.cal-date{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:4px;font-family:'DM Mono',monospace}
-.cal-cell.today .cal-date{color:var(--accent)}
-.cal-event{font-size:9px;padding:2px 5px;border-radius:4px;margin-bottom:2px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* ── SOP ── */
-.sop-list{display:flex;flex-direction:column;gap:10px;animation:fadeIn .3s ease}
-.sop-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:all .2s}
-.sop-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.sop-header{padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer}
-.sop-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.sop-info{flex:1}
-.sop-title{font-size:13.5px;font-weight:500;color:var(--ink);margin-bottom:2px}
-.sop-meta{font-size:10px;color:var(--ink3);font-family:'DM Mono',monospace}
-.sop-arrow{color:var(--ink3);transition:transform .2s;font-size:12px}
-.sop-card.open .sop-arrow{transform:rotate(90deg)}
-.sop-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border)}
-.sop-card.open .sop-body{display:block;animation:fadeIn .2s ease}
-.sop-step{display:flex;gap:10px;margin-top:10px;align-items:flex-start}
-.step-num{width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step-text{font-size:12.5px;color:var(--ink2);line-height:1.6}
-
-/* ── INVOICE ── */
-.invoice-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
-.inv-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.inv-val{font-family:'Instrument Serif',serif;font-size:22px;font-style:italic;margin-bottom:2px}
-.inv-label{font-size:10px;color:var(--ink3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
-.inv-val.green{color:var(--accent)}
-.inv-val.amber{color:var(--amber)}
-.inv-val.red{color:var(--red)}
-
-/* ── LOADING ── */
 .loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:24px;color:var(--ink3);font-size:13px}
 .loading::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--ink3);animation:pulse 1s infinite}
 
-/* ── MOBILE ── */
+.mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:4px;color:var(--ink2);font-size:18px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
+.overlay.open{display:block}
+
+/* Agent */
+.agent-fab{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.agent-tooltip{background:var(--ink);color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;white-space:nowrap;font-family:'DM Mono',monospace}
+.agent-btn{width:52px;height:52px;border-radius:50%;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(0,0,0,0.2);transition:all 0.2s}
+.agent-btn:hover{transform:scale(1.08);background:var(--ink2)}
+.agent-panel{position:fixed;bottom:90px;right:24px;width:380px;height:560px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.15);display:none;flex-direction:column;z-index:1000;overflow:hidden}
+.agent-panel.open{display:flex}
+.agent-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
+.agent-avatar{width:32px;height:32px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Instrument Serif',serif;font-size:14px;font-style:italic;flex-shrink:0}
+.agent-header-name{font-size:13px;font-weight:600;color:var(--ink)}
+.agent-header-status{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace}
+.agent-close{background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:4px;margin-left:auto}
+.agent-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg-row{display:flex;gap:8px;align-items:flex-start}
+.msg-row.user{justify-content:flex-end}
+.msg-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:2px}
+.msg-avatar.agent{background:var(--ink);color:#fff;font-family:'Instrument Serif',serif;font-style:italic}
+.msg-bubble{max-width:78%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.6}
+.msg-bubble.agent{background:var(--surface2);border:1px solid var(--border);border-radius:12px 12px 12px 3px}
+.msg-bubble.user{background:var(--ink);color:#fff;border-radius:12px 12px 3px 12px}
+.msg-bubble.error{background:var(--redBg);border:1px solid #fca5a5;color:var(--red)}
+.typing-indicator{display:flex;gap:4px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px 12px 12px 3px;width:fit-content}
+.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--ink3);animation:pulse 1.2s infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+.agent-suggestions{padding:8px 14px;display:flex;gap:6px;overflow-x:auto;border-top:1px solid var(--border);background:var(--surface2)}
+.agent-suggestions::-webkit-scrollbar{display:none}
+.suggestion-chip{background:none;border:1px solid var(--border);color:var(--ink2);padding:4px 10px;border-radius:20px;font-size:10px;cursor:pointer;white-space:nowrap;transition:all 0.15s;font-family:'DM Mono',monospace;flex-shrink:0}
+.suggestion-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accentBg)}
+.agent-input-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface)}
+.agent-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Geist',system-ui;color:var(--ink);background:var(--surface2);resize:none;outline:none;max-height:100px;line-height:1.5;transition:border-color 0.15s}
+.agent-input:focus{border-color:var(--accent)}
+.agent-send{width:34px;height:34px;border-radius:8px;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;transition:all 0.15s;flex-shrink:0}
+.agent-send:hover{background:var(--ink2)}
+.agent-send:disabled{background:var(--bg3);cursor:not-allowed}
+
 @media(max-width:640px){
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%);transition:transform .25s}
   .sidebar.open{transform:translateX(0)}
@@ -155,25 +141,17 @@ tr:hover td{background:var(--bg)}
   .content{padding:16px}
   .mobile-menu-btn{display:flex!important}
   .stats-row{grid-template-columns:repeat(2,1fr)}
-  .cal-grid{grid-template-columns:repeat(7,1fr);gap:3px}
-  .cal-cell{min-height:54px;padding:5px}
-  .cal-event{display:block;font-size:8px;padding:2px 4px}
-  .kanban{grid-template-columns:1fr}
   table{font-size:12px}
   th,td{padding:8px 10px}
   .hide-mobile{display:none!important}
+  .agent-panel{width:calc(100vw - 32px);right:16px;bottom:80px}
 }
-.mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:4px;color:var(--ink2);font-size:18px}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99}
-.overlay.open{display:block}
 </style>
 </head>
 <body>
-
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
 <div class="app">
-  <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-icon">H</div>
@@ -193,24 +171,10 @@ tr:hover td{background:var(--bg)}
         <span class="nav-icon">📋</span> Projects
         <span class="nav-count" id="proj-count">—</span>
       </div>
-      <div class="nav-item" onclick="showPage('calendar',this)">
-        <span class="nav-icon">📅</span> Content Calendar
-      </div>
-      <div class="nav-item" onclick="showPage('sop',this)">
-        <span class="nav-icon">📖</span> SOP Library
-        <span class="nav-count">8</span>
-      </div>
       <div class="nav-item" onclick="showPage('invoices',this)">
         <span class="nav-icon">💰</span> Invoices
         <span class="nav-count" id="inv-count">—</span>
       </div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Quick Links</div>
-      <div class="nav-item" onclick="showQuickLink('today',this)"><span class="nav-icon">⚡</span> Today's Tasks</div>
-      <div class="nav-item" onclick="showQuickLink('reminders',this)"><span class="nav-icon">🔔</span> Reminders</div>
-      <div class="nav-item" onclick="showQuickLink('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
     </div>
 
     <div class="sidebar-footer">
@@ -224,36 +188,65 @@ tr:hover td{background:var(--bg)}
     </div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
     <div class="topbar">
       <button class="mobile-menu-btn" onclick="openSidebar()">☰</button>
       <span class="page-title" id="topbar-title">CRM · Clients</span>
       <div class="topbar-right">
-        <button class="tb-btn ghost hide-mobile" onclick="alert('🤖 Ops Agent Filter\n\nFilter by status, industry, urgency, or deal value to surface the next-best actions.')">⊞ Filter</button>
-        <button class="tb-btn primary" onclick="alert('🤖 Add New Lead\n\nIn the full version, the agent creates a lead record, assigns priority, and schedules follow-up tasks automatically.')">+ New</button>
+        <button class="tb-btn primary">+ New</button>
       </div>
     </div>
-
     <div class="content" id="content"></div>
   </div>
 </div>
 
-<script>
-// ── NOTION CONFIG ─────────────────────────────────────────────────────────────
-// Secret is in Vercel environment variables — NOT here
-const NOTION_API_ENDPOINT = 'https://hs-ops-agent.vercel.app/api/get-notion-data';
+<div class="agent-fab">
+  <div class="agent-tooltip">✦ Ask your Ops Agent</div>
+  <button class="agent-btn" onclick="toggleAgent()">✦</button>
+</div>
 
-// ── DATA STATE ────────────────────────────────────────────────────────────────
+<div class="agent-panel" id="agentPanel">
+  <div class="agent-panel-header">
+    <div class="agent-avatar">H</div>
+    <div style="flex:1">
+      <div class="agent-header-name">Agency OS Agent</div>
+      <div class="agent-header-status">Connected to Notion</div>
+    </div>
+    <button class="agent-close" onclick="toggleAgent()">✕</button>
+  </div>
+
+  <div class="agent-messages" id="agentMessages">
+    <div class="msg-row">
+      <div class="msg-avatar agent">H</div>
+      <div class="msg-bubble agent">Good to see you! I'm your Agency OS Agent — connected live to your Notion workspace. I can add clients, create projects, show your dashboard and more. What do you need? ✦</div>
+    </div>
+  </div>
+
+  <div class="agent-suggestions">
+    <button class="suggestion-chip" onclick="sendSuggestion('Show my clients')">Show my clients</button>
+    <button class="suggestion-chip" onclick="sendSuggestion('Dashboard summary')">Dashboard summary</button>
+    <button class="suggestion-chip" onclick="sendSuggestion('Projects in progress')">Projects in progress</button>
+    <button class="suggestion-chip" onclick="sendSuggestion('Add new client')">Add new client</button>
+  </div>
+
+  <div class="agent-input-row">
+    <textarea class="agent-input" id="agentInput" rows="1" placeholder="Ask about your clients..."></textarea>
+    <button class="agent-send" id="agentSend">↑</button>
+  </div>
+</div>
+
+<script>
 let CRM_DATA = [];
-let PROJECTS = {};
+let PROJECTS = [];
 let INVOICES = [];
 let dataLoaded = false;
 
-// ── NOTION API HELPERS ────────────────────────────────────────────────────────
+const DATA_API = '/api/get-notion-data';
+const AGENT_URL = '/api/notion-agent';
+
 async function queryNotionDatabase(databaseType) {
   try {
-    const response = await fetch(`${NOTION_API_ENDPOINT}?database=${databaseType}`);
+    const response = await fetch(`${DATA_API}?database=${databaseType}`);
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     return await response.json();
   } catch (err) {
@@ -270,144 +263,77 @@ function getPropertyValue(properties, propName) {
   if (prop.type === 'phone_number') return prop.phone_number || '';
   if (prop.type === 'number') return prop.number;
   if (prop.type === 'select') return prop.select?.name || '';
-  if (prop.type === 'multi_select') return prop.multi_select.map(s => s.name).join(', ');
   if (prop.type === 'date') return prop.date?.start || '';
   if (prop.type === 'relation') return prop.relation.map(r => r.id).join(', ');
   return '';
 }
 
-// ── LOAD DATA FROM NOTION ─────────────────────────────────────────────────────
-async function loadNotionData() {
-  console.log('Loading Notion data...');
-  
-  // Load Clients
-const clientsRes = await queryNotionDatabase('clients');
+async function loadData() {
+  const clientsRes = await queryNotionDatabase('clients');
+  const projectsRes = await queryNotionDatabase('projects');
+  const invoicesRes = await queryNotionDatabase('invoices');
+
   CRM_DATA = clientsRes.results.map(page => ({
     id: page.id,
     name: getPropertyValue(page.properties, 'Client Name'),
-    status: getPropertyValue(page.properties, 'Status'),
     phone: getPropertyValue(page.properties, 'Phone'),
+    status: getPropertyValue(page.properties, 'Status'),
     value: getPropertyValue(page.properties, 'Deal Value'),
     lastContacted: getPropertyValue(page.properties, 'Last Contacted'),
     nextAction: getPropertyValue(page.properties, 'Next Action'),
-    service: 'Agency Service',
-    industry: 'Custom',
-    contact: 'Contact Person',
   })).filter(c => c.name);
 
-  // Load Projects
-const projectsRes = await queryNotionDatabase('projects');
-  PROJECTS = {
-    'Discovery': [],
-    'In Progress': [],
-    'Review': [],
-    'Done': [],
-  };
-  projectsRes.results.forEach(page => {
-    const proj = {
-      id: page.id,
-      title: getPropertyValue(page.properties, 'Project name'),
-      client: getPropertyValue(page.properties, 'Client'),
-      status: getPropertyValue(page.properties, 'Status'),
-      due: getPropertyValue(page.properties, 'Due date'),
-      budget: getPropertyValue(page.properties, 'Budget'),
-      tag: getPropertyValue(page.properties, 'Status'),
-      tagColor: 'blue',
-    };
-    if (proj.title) {
-      const status = proj.status || 'Discovery';
-      if (!PROJECTS[status]) PROJECTS[status] = [];
-      PROJECTS[status].push(proj);
-    }
-  });
+  PROJECTS = projectsRes.results.map(page => ({
+    id: page.id,
+    name: getPropertyValue(page.properties, 'Project name'),
+    client: getPropertyValue(page.properties, 'Client'),
+    status: getPropertyValue(page.properties, 'Status'),
+    due: getPropertyValue(page.properties, 'Due date'),
+    budget: getPropertyValue(page.properties, 'Budget'),
+  })).filter(p => p.name);
 
-  // Load Invoices
-const invoicesRes = await queryNotionDatabase('invoices');
   INVOICES = invoicesRes.results.map(page => ({
     id: page.id,
-    invoiceNo: getPropertyValue(page.properties, 'Invoice no'),
+    number: getPropertyValue(page.properties, 'Invoice no'),
     client: getPropertyValue(page.properties, 'Clients'),
     amount: getPropertyValue(page.properties, 'Amount'),
     status: getPropertyValue(page.properties, 'Status'),
     phone: getPropertyValue(page.properties, 'Phone'),
-    date: new Date().toISOString().split('T')[0],
-    due: 'Pending',
-  })).filter(i => i.invoiceNo);
+  })).filter(i => i.number);
 
   dataLoaded = true;
   document.getElementById('crm-count').textContent = CRM_DATA.length;
-  document.getElementById('proj-count').textContent = Object.values(PROJECTS).flat().length;
+  document.getElementById('proj-count').textContent = PROJECTS.length;
   document.getElementById('inv-count').textContent = INVOICES.length;
-  
+
   showPage('crm', document.querySelector('.nav-item.active'));
 }
 
-// ── RENDERING ─────────────────────────────────────────────────────────────────
 function statusBadge(s) {
-  const map = { Active:'green', Completed:'grey', Proposal:'blue', Lead:'amber', Paid:'green', Pending:'amber', Draft:'grey', Overdue:'red' };
-  return `<span class="badge ${map[s]||'grey'}">${s}</span>`;
-}
-
-function getAgentPriority(client) {
-  const numericValue = Number(String(client.value).replace(/[$,]/g, '')) || 0;
-  if (client.status === 'Proposal' || numericValue >= 800) return 'High';
-  if (client.status === 'Lead' || numericValue >= 300) return 'Medium';
-  return 'Normal';
-}
-
-function getAgentAction(client) {
-  if (client.status === 'Proposal') return 'Follow up with pricing and schedule a review call.';
-  if (client.status === 'Lead') return 'Send intro message and qualify the requirements.';
-  if (client.status === 'Active') return 'Share progress update and confirm next milestone.';
-  return 'Review account and assign next step.';
+  const map = { Active:'green', Lead:'amber', Proposal:'blue', Completed:'grey', Paid:'green', Pending:'amber', Overdue:'red', Draft:'grey', "In Progress":'blue', "Not Started":'grey' };
+  return `<span class="badge ${map[s]||'grey'}">${s || '—'}</span>`;
 }
 
 function renderCRM() {
-  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
-  
-  const activeCount = CRM_DATA.filter(c => c.status === 'Active').length;
-  const totalValue = CRM_DATA.reduce((sum, c) => sum + (parseFloat(String(c.value).replace(/[$,]/g, '')) || 0), 0);
-  
+  if (!dataLoaded) return '<div class="loading">Syncing Notion data</div>';
+  const active = CRM_DATA.filter(c => c.status === 'Active').length;
   return `
     <div class="page-header">
       <div class="page-emoji">👥</div>
       <div class="page-h1">Client Relationships</div>
-      <div class="page-desc">Live sync from Notion — all clients, deals, and follow-ups in one place.</div>
+      <div class="page-desc">Live sync from your Notion workspace.</div>
     </div>
-
-    <div style="margin-bottom:14px;padding:14px 16px;background:linear-gradient(135deg,#ffffff 0%, #f8fffd 100%);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,118,110,.06)">
-      <div style="font-size:13px;color:var(--ink2);line-height:1.65">
-        <strong style="color:var(--ink)">🔄 Live Notion Integration</strong><br/>
-        This workspace is connected directly to your Notion databases. All client data updates instantly across the system.
-      </div>
-    </div>
-
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">${CRM_DATA.length}</div><div class="stat-label">Total Clients</div></div>
-      <div class="stat-card"><div class="stat-val">${activeCount}</div><div class="stat-label">Active</div></div>
-      <div class="stat-card"><div class="stat-val">$${(totalValue / 1000).toFixed(1)}k</div><div class="stat-label">Pipeline Value</div></div>
-      <div class="stat-card"><div class="stat-val">${CRM_DATA.length}</div><div class="stat-label">Month Growth</div></div>
+      <div class="stat-card"><div class="stat-val">${CRM_DATA.length}</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-val">${active}</div><div class="stat-label">Active</div></div>
     </div>
-
     <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">All Clients from Notion</span>
-      </div>
+      <div class="table-header"><span class="table-title">All Clients</span></div>
       <div style="overflow-x:auto">
       <table>
-        <thead><tr>
-          <th>Client</th><th>Phone</th><th class="hide-mobile">Next Action</th>
-          <th>Status</th><th class="hide-mobile">Value</th><th>Last Contacted</th>
-        </tr></thead>
+        <thead><tr><th>Client</th><th>Phone</th><th>Status</th><th>Value</th><th>Next Action</th></tr></thead>
         <tbody>
-          ${CRM_DATA.map(c=>`<tr>
-            <td><div style="font-weight:500;color:var(--ink)">${c.name}</div></td>
-            <td style="font-family:'DM Mono',monospace;font-size:11px">${c.phone}</td>
-            <td class="hide-mobile" style="font-size:11px;color:var(--ink3)">${c.nextAction}</td>
-            <td>${statusBadge(c.status)}</td>
-            <td class="hide-mobile" style="font-weight:500;color:var(--accent);font-family:'DM Mono',monospace">${c.value}</td>
-            <td style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace">${c.lastContacted || '—'}</td>
-          </tr>`).join('')}
+          ${CRM_DATA.map(c=>`<tr><td>${c.name}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${c.phone || '—'}</td><td>${statusBadge(c.status)}</td><td style="color:var(--accent)">${c.value ?? '—'}</td><td style="font-size:11px">${c.nextAction || '—'}</td></tr>`).join('')}
         </tbody>
       </table>
       </div>
@@ -415,111 +341,50 @@ function renderCRM() {
 }
 
 function renderProjects() {
-  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
-  
+  if (!dataLoaded) return '<div class="loading">Syncing Notion data</div>';
   return `
     <div class="page-header">
       <div class="page-emoji">📋</div>
-      <div class="page-h1">Project Tracker</div>
-      <div class="page-desc">Live pipeline view synced directly from your Notion projects database.</div>
+      <div class="page-h1">Projects</div>
+      <div class="page-desc">Live pipeline from Notion.</div>
     </div>
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'In Progress').length}</div><div class="stat-label">In Progress</div></div>
-      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'Review').length}</div><div class="stat-label">In Review</div></div>
-      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'Done').length}</div><div class="stat-label">Delivered</div></div>
-      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().length}</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-val">${PROJECTS.length}</div><div class="stat-label">Total</div></div>
     </div>
     <div class="kanban">
-      ${Object.entries(PROJECTS).map(([col,cards])=>`
-        <div class="kanban-col">
-          <div class="col-header">
-            <span class="col-title">${col}</span>
-            <span class="col-count">${cards.length}</span>
-          </div>
-          ${cards.map(c=>`
-            <div class="kanban-card">
-              <div class="card-title">${c.title}</div>
-              <div style="margin-top:6px;font-size:10px;color:var(--ink3)">${c.client}</div>
-              <div class="card-meta" style="margin-top:6px">
-                <span style="font-size:9px;color:var(--ink3)">${c.status}</span>
-                ${c.due ? `<span class="card-due">${c.due}</span>` : ''}
-              </div>
-            </div>`).join('')}
-        </div>`).join('')}
+      <div class="kanban-col">
+        <div class="col-header"><span class="col-title">All Projects</span><span class="col-count">${PROJECTS.length}</span></div>
+        ${PROJECTS.map(p=>`<div class="kanban-card"><div class="card-title">${p.name}</div><div style="font-size:10px;color:var(--ink3)">${p.client || '—'}</div><div style="margin-top:6px">${statusBadge(p.status)}</div></div>`).join('')}
+      </div>
     </div>`;
 }
 
 function renderInvoices() {
-  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
-  
-  const paid = INVOICES.filter(i => i.status === 'Paid').reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
-  const pending = INVOICES.filter(i => i.status === 'Pending').reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
-  const total = INVOICES.reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
-  
+  if (!dataLoaded) return '<div class="loading">Syncing Notion data</div>';
   return `
     <div class="page-header">
       <div class="page-emoji">💰</div>
-      <div class="page-h1">Invoice Tracker</div>
-      <div class="page-desc">All billing synced live from Notion — sent, pending, and overdue.</div>
+      <div class="page-h1">Invoices</div>
+      <div class="page-desc">All billing from Notion.</div>
     </div>
-    <div class="invoice-summary">
-      <div class="inv-card"><div class="inv-val green">$${paid.toLocaleString()}</div><div class="inv-label">Collected</div></div>
-      <div class="inv-card"><div class="inv-val amber">$${pending.toLocaleString()}</div><div class="inv-label">Pending</div></div>
-      <div class="inv-card"><div class="inv-val">$${total.toLocaleString()}</div><div class="inv-label">Total Billed</div></div>
-      <div class="inv-card"><div class="inv-val" style="color:var(--ink2)">${INVOICES.length}</div><div class="inv-label">Invoices</div></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${INVOICES.length}</div><div class="stat-label">Total</div></div>
     </div>
     <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">All Invoices from Notion</span>
-      </div>
+      <div class="table-header"><span class="table-title">All Invoices</span></div>
       <div style="overflow-x:auto">
       <table>
-        <thead><tr>
-          <th>Invoice</th><th>Client</th><th>Amount</th><th>Status</th><th>Phone</th>
-        </tr></thead>
+        <thead><tr><th>Invoice</th><th>Client</th><th>Amount</th><th>Status</th></tr></thead>
         <tbody>
-          ${INVOICES.map(inv=>`<tr>
-            <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)">${inv.invoiceNo}</span></td>
-            <td style="font-weight:500;color:var(--ink)">${inv.client}</td>
-            <td style="font-weight:600;color:var(--ink);font-family:'DM Mono',monospace">$${inv.amount}</td>
-            <td>${statusBadge(inv.status)}</td>
-            <td style="font-family:'DM Mono',monospace;font-size:11px">${inv.phone || '—'}</td>
-          </tr>`).join('')}
+          ${INVOICES.map(i=>`<tr><td style="font-family:'DM Mono',monospace;font-size:11px">${i.number}</td><td>${i.client || '—'}</td><td style="font-weight:600">${i.amount ?? '—'}</td><td>${statusBadge(i.status)}</td></tr>`).join('')}
         </tbody>
       </table>
       </div>
     </div>`;
 }
 
-function renderSOP() {
-  return `
-    <div class="page-header">
-      <div class="page-emoji">📖</div>
-      <div class="page-h1">SOP Library</div>
-      <div class="page-desc">Standard operating procedures — operational playbooks.</div>
-    </div>
-    <div style="text-align:center;padding:40px;color:var(--ink3)">
-      <div style="font-size:48px;margin-bottom:14px">📖</div>
-      <div style="font-size:14px;margin-bottom:8px">SOP Library Ready</div>
-      <div style="font-size:12px;line-height:1.6;max-width:300px;margin:0 auto">Your SOPs sync from a connected Notion database. Add procedures there and they appear here instantly.</div>
-    </div>`;
-}
-
-// ── NAVIGATION ────────────────────────────────────────────────────────────────
-const PAGES = { 
-  crm: renderCRM, 
-  projects: renderProjects, 
-  calendar: () => renderCalendar(), 
-  sop: renderSOP, 
-  invoices: renderInvoices 
-};
-const TITLES = { 
-  crm: "CRM · Clients", 
-  projects: "Projects · Pipeline", 
-  calendar: "Content Calendar", 
-  sop: "SOP Library", 
-  invoices: "Invoices · Billing" 
-};
+const PAGES = { crm: renderCRM, projects: renderProjects, invoices: renderInvoices };
+const TITLES = { crm: "CRM · Clients", projects: "Projects", invoices: "Invoices" };
 
 function showPage(id, el) {
   document.getElementById('content').innerHTML = PAGES[id]();
@@ -527,30 +392,6 @@ function showPage(id, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
   closeSidebar();
-  window.scrollTo(0, 0);
-}
-
-function showQuickLink(id, el) {
-  const content = document.getElementById('content');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (el) el.classList.add('active');
-
-  if (id === 'today') {
-    document.getElementById('topbar-title').textContent = "Today's Tasks";
-    content.innerHTML = `<div class="page-header"><div class="page-emoji">⚡</div><div class="page-h1">Today's Tasks</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Tasks sync from your Notion client database</div></div>`;
-  } else if (id === 'reminders') {
-    document.getElementById('topbar-title').textContent = "Reminders";
-    content.innerHTML = `<div class="page-header"><div class="page-emoji">🔔</div><div class="page-h1">Reminders</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Reminders from your active projects</div></div>`;
-  } else if (id === 'settings') {
-    document.getElementById('topbar-title').textContent = "Agent Settings";
-    content.innerHTML = `<div class="page-header"><div class="page-emoji">⚙️</div><div class="page-h1">Agent Settings</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Connected to Notion via API</div></div>`;
-  }
-  closeSidebar();
-  window.scrollTo(0, 0);
-}
-
-function renderCalendar() {
-  return `<div class="page-header"><div class="page-emoji">📅</div><div class="page-h1">Content Calendar</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Calendar syncs from your Notion workspace</div></div>`;
 }
 
 function openSidebar() {
@@ -563,137 +404,80 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('open');
 }
 
-// Init
-loadNotionData().then(() => showPage('crm', document.querySelector('.nav-item.active')));
-</script>
-
-<!-- ── AI AGENT CHAT OVERLAY ──────────────────────────────────────────────── -->
-<style>
-.agent-fab{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-.agent-tooltip{background:var(--ink);color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;white-space:nowrap;animation:fadeIn 0.4s ease 1s both;font-family:'DM Mono',monospace}
-.agent-btn{width:52px;height:52px;border-radius:50%;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(0,0,0,0.2);transition:all 0.2s}
-.agent-btn:hover{transform:scale(1.08);background:var(--ink2)}
-.agent-panel{position:fixed;bottom:90px;right:24px;width:380px;height:560px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.15);display:none;flex-direction:column;z-index:1000;overflow:hidden}
-.agent-panel.open{display:flex}
-.agent-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
-.agent-avatar{width:32px;height:32px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Instrument Serif',serif;font-size:14px;font-style:italic;flex-shrink:0}
-.agent-header-name{font-size:13px;font-weight:600;color:var(--ink)}
-.agent-header-status{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace}
-.agent-close{background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:4px;margin-left:auto}
-.agent-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.msg-row{display:flex;gap:8px;animation:fadeIn 0.3s ease}
-.msg-bubble{max-width:78%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.6}
-.msg-bubble.agent{background:var(--surface2);border:1px solid var(--border)}
-.msg-bubble.user{background:var(--ink);color:#fff}
-.agent-input-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
-.agent-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Geist',system-ui}
-.agent-input:focus{border-color:var(--accent);outline:none}
-.agent-send{width:34px;height:34px;border-radius:8px;background:var(--ink);border:none;cursor:pointer;color:#fff;flex-shrink:0}
-</style>
-<div class="agent-fab">
-  <div class="agent-tooltip">✦ Ask your Ops Agent</div>
-  <button class="agent-btn" onclick="toggleAgent()">✦</button>
-</div>
-<div class="agent-panel" id="agentPanel">
-  <div class="agent-panel-header">
-    <div class="agent-avatar">H</div>
-    <div style="flex:1">
-      <div class="agent-header-name">Agency OS Agent</div>
-      <div class="agent-header-status">Connected to Notion</div>
-    </div>
-    <button class="agent-close" onclick="toggleAgent()">✕</button>
-  </div>
-  <div class="agent-messages">
-    <div class="msg-row">
-      <div style="width:24px;height:24px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;flex-shrink:0">H</div>
-      <div class="msg-bubble agent">Your ops data is live from Notion. ✦</div>
-    </div>
-  </div>
-  <div class="agent-input-row">
-    <input class="agent-input" placeholder="Ask about your clients..." />
-    <button class="agent-send">↑</button>
-  </div>
-</div>
-<script>
 let agentOpen = false;
 function toggleAgent() {
   agentOpen = !agentOpen;
   document.getElementById('agentPanel').classList.toggle('open', agentOpen);
 }
-</script>
-<script>
-const AGENT_URL = '/api/notion-agent';
+
+function appendMessage(text, type='agent', isError=false) {
+  const messages = document.getElementById('agentMessages');
+  const row = document.createElement('div');
+  row.className = `msg-row ${type === 'user' ? 'user' : ''}`;
+  row.innerHTML = type === 'user'
+    ? `<div class="msg-bubble user">${text}</div>`
+    : `<div class="msg-avatar agent">H</div><div class="msg-bubble ${isError ? 'error' : 'agent'}">${text}</div>`;
+  messages.appendChild(row);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function showTyping() {
+  const messages = document.getElementById('agentMessages');
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  row.id = 'typingRow';
+  row.innerHTML = `<div class="msg-avatar agent">H</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  messages.appendChild(row);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function hideTyping() {
+  document.getElementById('typingRow')?.remove();
+}
 
 async function sendMessage(message) {
-  const messagesContainer = document.querySelector('.agent-messages');
-
-  // user message
-  const userMsg = document.createElement('div');
-  userMsg.className = 'msg-row';
-  userMsg.innerHTML = `
-    <div class="msg-bubble user">${message}</div>
-  `;
-  messagesContainer.appendChild(userMsg);
-
-  // typing indicator
-  const typing = document.createElement('div');
-  typing.className = 'msg-row';
-  typing.innerHTML = `
-    <div class="msg-bubble agent">Typing...</div>
-  `;
-  messagesContainer.appendChild(typing);
-
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  if (!message.trim()) return;
+  appendMessage(message, 'user');
+  showTyping();
 
   try {
-    const res = await fetch(AGENT_URL, {
+    const response = await fetch(AGENT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: "user", content: message }]
+        messages: [{ role: 'user', content: message }]
       })
     });
 
-    const data = await res.json();
-
-    typing.remove();
-
-    const reply = document.createElement('div');
-    reply.className = 'msg-row';
-    reply.innerHTML = `
-      <div class="msg-bubble agent">$${data.response || data.reply || data.error || 'No response'}
-</div>
-    `;
-    messagesContainer.appendChild(reply);
-
-  } catch (err) {
-    typing.remove();
-
-    const error = document.createElement('div');
-    error.className = 'msg-row';
-    error.innerHTML = `
-      <div class="msg-bubble agent">Error connecting to agent</div>
-    `;
-    messagesContainer.appendChild(error);
+    const data = await response.json();
+    hideTyping();
+    appendMessage(data.response || data.reply || data.error || 'No response', 'agent', !!data.error);
+  } catch (error) {
+    hideTyping();
+    appendMessage('Error connecting to agent.', 'agent', true);
   }
-
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// send button
-document.querySelector('.agent-send').onclick = () => {
-  const input = document.querySelector('.agent-input');
-  if (!input.value.trim()) return;
-  sendMessage(input.value.trim());
-  input.value = '';
-};
+function sendSuggestion(text) {
+  sendMessage(text);
+}
 
-// enter key
-document.querySelector('.agent-input').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    document.querySelector('.agent-send').click();
+document.getElementById('agentSend').addEventListener('click', () => {
+  const input = document.getElementById('agentInput');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  sendMessage(message);
+});
+
+document.getElementById('agentInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('agentSend').click();
   }
 });
+
+loadData();
 </script>
 </body>
 </html>
