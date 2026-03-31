@@ -9,15 +9,9 @@ const notion = new Client({
   auth: process.env.NOTION_SECRET,
 });
 
-const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
+const CLIENTS_DB = process.env.NOTION_CRM_DB_ID || process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
 const INVOICES_DB = process.env.NOTION_INVOICES_DB_ID;
-
-if (!CLIENTS_DB || !PROJECTS_DB || !INVOICES_DB) {
-  console.warn(
-    "WARNING: One or more Notion DB IDs are missing. Check NOTION_CLIENTS_DB_ID, NOTION_PROJECTS_DB_ID, NOTION_INVOICES_DB_ID."
-  );
-}
 
 const tools = [
   {
@@ -32,18 +26,9 @@ const tools = [
           enum: ["Active", "Lead", "Paused", "Completed"],
           description: "Client status",
         },
-        deal_value: {
-          type: "number",
-          description: "Deal value in rupees",
-        },
-        last_contacted: {
-          type: "string",
-          description: "Last contacted date in YYYY-MM-DD format",
-        },
-        next_action: {
-          type: "string",
-          description: "Next action for this client",
-        },
+        deal_value: { type: "number", description: "Deal value in rupees" },
+        last_contacted: { type: "string", description: "Last contacted date in YYYY-MM-DD format" },
+        next_action: { type: "string", description: "Next action for this client" },
       },
       required: ["name"],
     },
@@ -70,19 +55,13 @@ const tools = [
       type: "object",
       properties: {
         name: { type: "string", description: "Project name" },
-        client_name: {
-          type: "string",
-          description: "Client this project is for",
-        },
+        client_name: { type: "string", description: "Client this project is for" },
         status: {
           type: "string",
           enum: ["Not Started", "In Progress", "Completed", "Paused"],
           description: "Project status",
         },
-        due_date: {
-          type: "string",
-          description: "Due date in YYYY-MM-DD format",
-        },
+        due_date: { type: "string", description: "Due date in YYYY-MM-DD format" },
       },
       required: ["name"],
     },
@@ -110,7 +89,7 @@ const tools = [
       properties: {
         status: {
           type: "string",
-          enum: ["Paid", "Pending", "Overdue", "all"],
+          enum: ["Paid", "Pending", "Overdue", "Draft", "all"],
           description: "Filter by invoice status",
         },
       },
@@ -119,26 +98,19 @@ const tools = [
   },
   {
     name: "get_dashboard_summary",
-    description:
-      "Get a dashboard summary of clients, projects, and invoices.",
-    input_schema: {
-      type: "object",
-      properties: {},
-      required: [],
-    },
+    description: "Get a dashboard summary of clients, projects, and invoices.",
+    input_schema: { type: "object", properties: {}, required: [] },
   },
 ];
 
-async function findClientPageIdByName(ClientName) {
+async function findClientPageIdByName(clientName) {
   if (!clientName || !CLIENTS_DB) return null;
 
   const response = await notion.databases.query({
     database_id: CLIENTS_DB,
     filter: {
       property: "Client Name",
-      title: {
-        equals: clientName,
-      },
+      title: { equals: clientName },
     },
     page_size: 1,
   });
@@ -148,30 +120,19 @@ async function findClientPageIdByName(ClientName) {
 
 async function addClient(input) {
   if (!CLIENTS_DB) throw new Error("CLIENTS_DB environment variable is not set");
-  if (!input.name?.trim()) throw new Error("Client Name is required");
+  if (!input.name?.trim()) throw new Error("Client name is required");
 
   const props = {
-   "Client Name": {
+    "Client Name": {
       title: [{ text: { content: input.name.trim() } }],
     },
   };
 
-  if (input.status) {
-    props["Status"] = { select: { name: input.status } };
-  }
-
-  if (typeof input.deal_value === "number") {
-    props["Deal Value"] = { number: input.deal_value };
-  }
-
-  if (input.last_contacted) {
-    props["Last Contacted"] = { date: { start: input.last_contacted } };
-  }
-
+  if (input.status) props["Status"] = { select: { name: input.status } };
+  if (typeof input.deal_value === "number") props["Deal Value"] = { number: input.deal_value };
+  if (input.last_contacted) props["Last Contacted"] = { date: { start: input.last_contacted } };
   if (input.next_action) {
-    props["Next Action"] = {
-      rich_text: [{ text: { content: input.next_action } }],
-    };
+    props["Next Action"] = { rich_text: [{ text: { content: input.next_action } }] };
   }
 
   const page = await notion.pages.create({
@@ -179,11 +140,7 @@ async function addClient(input) {
     properties: props,
   });
 
-  return {
-    success: true,
-    id: page.id,
-    name: input.name,
-  };
+  return { success: true, id: page.id, name: input.name };
 }
 
 async function getClients(input) {
@@ -191,10 +148,7 @@ async function getClients(input) {
 
   const filter =
     input.status && input.status !== "all"
-      ? {
-          property: "Status",
-          select: { equals: input.status },
-        }
+      ? { property: "Status", select: { equals: input.status } }
       : undefined;
 
   const response = await notion.databases.query({
@@ -208,37 +162,27 @@ async function getClients(input) {
     status: page.properties["Status"]?.select?.name || "—",
     deal_value: page.properties["Deal Value"]?.number ?? null,
     last_contacted: page.properties["Last Contacted"]?.date?.start || "—",
-    next_action:
-      page.properties["Next Action"]?.rich_text?.[0]?.plain_text || "—",
+    next_action: page.properties["Next Action"]?.rich_text?.[0]?.plain_text || "—",
   }));
 }
 
 async function addProject(input) {
-  if (!PROJECTS_DB) {
-    throw new Error("PROJECTS_DB environment variable is not set");
-  }
-  if (!input.name?.trim()) throw new Error("Project Name is required");
+  if (!PROJECTS_DB) throw new Error("PROJECTS_DB environment variable is not set");
+  if (!input.name?.trim()) throw new Error("Project name is required");
 
   const props = {
-    "Project Name": {
+    "Project name": {
       title: [{ text: { content: input.name.trim() } }],
     },
   };
 
-  if (input.status) {
-    props["Status"] = { select: { name: input.status } };
-  }
-
-  if (input.due_date) {
-    props["Due Date"] = { date: { start: input.due_date } };
-  }
+  if (input.status) props["Status"] = { select: { name: input.status } };
+  if (input.due_date) props["Due date"] = { date: { start: input.due_date } };
 
   if (input.client_name) {
     const clientPageId = await findClientPageIdByName(input.client_name);
     if (clientPageId) {
-      props["Client"] = {
-        relation: [{ id: clientPageId }],
-      };
+      props["Client"] = { relation: [{ id: clientPageId }] };
     }
   }
 
@@ -247,24 +191,15 @@ async function addProject(input) {
     properties: props,
   });
 
-  return {
-    success: true,
-    id: page.id,
-    name: input.name,
-  };
+  return { success: true, id: page.id, name: input.name };
 }
 
 async function getProjects(input) {
-  if (!PROJECTS_DB) {
-    throw new Error("PROJECTS_DB environment variable is not set");
-  }
+  if (!PROJECTS_DB) throw new Error("PROJECTS_DB environment variable is not set");
 
   const filter =
     input.status && input.status !== "all"
-      ? {
-          property: "Status",
-          select: { equals: input.status },
-        }
+      ? { property: "Status", select: { equals: input.status } }
       : undefined;
 
   const response = await notion.databases.query({
@@ -274,27 +209,23 @@ async function getProjects(input) {
   });
 
   return response.results.map((page) => ({
-    name: page.properties["Project Name"]?.title?.[0]?.plain_text || "Unnamed",
+    name: page.properties["Project name"]?.title?.[0]?.plain_text || "Unnamed",
     client:
       page.properties["Client"]?.relation?.length > 0
         ? `${page.properties["Client"].relation.length} linked`
         : "—",
     status: page.properties["Status"]?.select?.name || "—",
-    due_date: page.properties["Due Date"]?.date?.start || "—",
+    due_date: page.properties["Due date"]?.date?.start || "—",
+    budget: page.properties["Budget"]?.number ?? null,
   }));
 }
 
 async function getInvoices(input) {
-  if (!INVOICES_DB) {
-    throw new Error("INVOICES_DB environment variable is not set");
-  }
+  if (!INVOICES_DB) throw new Error("INVOICES_DB environment variable is not set");
 
   const filter =
     input.status && input.status !== "all"
-      ? {
-          property: "Status",
-          select: { equals: input.status },
-        }
+      ? { property: "Status", select: { equals: input.status } }
       : undefined;
 
   const response = await notion.databases.query({
@@ -304,10 +235,10 @@ async function getInvoices(input) {
   });
 
   return response.results.map((page) => ({
-    invoice: page.properties["Invoice"]?.title?.[0]?.plain_text || "Unnamed",
+    invoice: page.properties["Invoice no"]?.title?.[0]?.plain_text || "Unnamed",
     client:
-      page.properties["Client"]?.relation?.length > 0
-        ? `${page.properties["Client"].relation.length} linked`
+      page.properties["Clients"]?.relation?.length > 0
+        ? `${page.properties["Clients"].relation.length} linked`
         : "—",
     amount: page.properties["Amount"]?.number ?? null,
     status: page.properties["Status"]?.select?.name || "—",
@@ -362,6 +293,14 @@ async function getDashboardSummary() {
     0
   );
 
+  const clientLines = clients.map((p) => {
+    const name = p.properties["Client Name"]?.title?.[0]?.plain_text || "Unnamed";
+    const status = p.properties["Status"]?.select?.name || "—";
+    const value = p.properties["Deal Value"]?.number ?? 0;
+    const next = p.properties["Next Action"]?.rich_text?.[0]?.plain_text || "—";
+    return `- ${name} — Deal Value: ₹${value} | Next Action: ${next} | Status: ${status}`;
+  });
+
   return {
     active_clients: activeClients,
     leads,
@@ -370,26 +309,20 @@ async function getDashboardSummary() {
     completed_projects: completedProjects,
     overdue_invoices: overdueInvoices.length,
     pending_invoice_value: pendingInvoiceValue,
+    summary_text: clientLines.join("\n"),
   };
 }
 
 async function executeTool(name, input) {
   try {
     switch (name) {
-      case "add_client":
-        return await addClient(input);
-      case "get_clients":
-        return await getClients(input || {});
-      case "add_project":
-        return await addProject(input);
-      case "get_projects":
-        return await getProjects(input || {});
-      case "get_invoices":
-        return await getInvoices(input || {});
-      case "get_dashboard_summary":
-        return await getDashboardSummary();
-      default:
-        return { error: "Unknown tool" };
+      case "add_client": return await addClient(input);
+      case "get_clients": return await getClients(input || {});
+      case "add_project": return await addProject(input);
+      case "get_projects": return await getProjects(input || {});
+      case "get_invoices": return await getInvoices(input || {});
+      case "get_dashboard_summary": return await getDashboardSummary();
+      default: return { error: "Unknown tool" };
     }
   } catch (error) {
     return { error: error.message || "Tool execution failed" };
@@ -459,11 +392,9 @@ export default async function handler(req, res) {
       }
 
       if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter(
-          (b) => b.type === "tool_use"
-        );
-
+        const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
         const toolResults = [];
+
         for (const toolUse of toolUseBlocks) {
           const result = await executeTool(toolUse.name, toolUse.input);
           toolResults.push({
