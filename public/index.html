@@ -210,9 +210,9 @@ async function loadData() {
 
   CRM_DATA = clients.results?.map(p => ({
     id: p.id,
-    name: getPropertyValue(p.properties, 'Client name'),
+    name: getPropertyValue(p.properties, 'Client Name'),
     phone: getPropertyValue(p.properties, 'Phone'),
-    status: getPropertyValue(p.properties, 'status'),
+    status: getPropertyValue(p.properties, 'Status'),
     value: getPropertyValue(p.properties, 'Deal Value'),
     lastContacted: getPropertyValue(p.properties, 'Last Contacted'),
     nextAction: getPropertyValue(p.properties, 'Next Action'),
