@@ -9,7 +9,7 @@ const notion = new Client({
   auth: process.env.NOTION_SECRET,
 });
 
-const CLIENTS_DB = process.env.NOTION_CRM_DB_ID || process.env.NOTION_CLIENTS_DB_ID;
+const CLIENTS_DB = process.env.NOTION_CLIENTS_DB_ID;
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB_ID;
 const INVOICES_DB = process.env.NOTION_INVOICES_DB_ID;
 
