@@ -5,7 +5,7 @@ const notion = new Client({
 });
 
 const DB_MAP = {
-  clients: process.env.NOTION_CLIENTS_DB_ID,
+  clients: process.env.NOTION_CRM_DB_ID || process.env.NOTION_CLIENTS_DB_ID,
   projects: process.env.NOTION_PROJECTS_DB_ID,
   invoices: process.env.NOTION_INVOICES_DB_ID,
 };
