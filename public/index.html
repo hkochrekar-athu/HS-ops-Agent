@@ -661,7 +661,8 @@ async function sendMessage(message) {
     const reply = document.createElement('div');
     reply.className = 'msg-row';
     reply.innerHTML = `
-      <div class="msg-bubble agent">${data.reply || data.error || 'No response'}</div>
+      <div class="msg-bubble agent">$${data.response || data.reply || data.error || 'No response'}
+</div>
     `;
     messagesContainer.appendChild(reply);
 
