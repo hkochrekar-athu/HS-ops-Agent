@@ -143,6 +143,10 @@ tr:hover td{background:var(--bg)}
 .inv-val.amber{color:var(--amber)}
 .inv-val.red{color:var(--red)}
 
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:24px;color:var(--ink3);font-size:13px}
+.loading::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--ink3);animation:pulse 1s infinite}
+
 /* ── MOBILE ── */
 @media(max-width:640px){
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%);transition:transform .25s}
@@ -183,11 +187,11 @@ tr:hover td{background:var(--bg)}
       <div class="nav-label">Workspace</div>
       <div class="nav-item active" onclick="showPage('crm',this)">
         <span class="nav-icon">👥</span> CRM
-        <span class="nav-count">12</span>
+        <span class="nav-count" id="crm-count">—</span>
       </div>
       <div class="nav-item" onclick="showPage('projects',this)">
         <span class="nav-icon">📋</span> Projects
-        <span class="nav-count">6</span>
+        <span class="nav-count" id="proj-count">—</span>
       </div>
       <div class="nav-item" onclick="showPage('calendar',this)">
         <span class="nav-icon">📅</span> Content Calendar
@@ -198,7 +202,7 @@ tr:hover td{background:var(--bg)}
       </div>
       <div class="nav-item" onclick="showPage('invoices',this)">
         <span class="nav-icon">💰</span> Invoices
-        <span class="nav-count">9</span>
+        <span class="nav-count" id="inv-count">—</span>
       </div>
     </div>
 
@@ -236,104 +240,111 @@ tr:hover td{background:var(--bg)}
 </div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
-const CRM_DATA = [
-  { name:"The Coconut Grove", contact:"Ravi Naik", status:"Active", value:"$300", service:"AI Chatbot + WhatsApp", next:"Apr 2", industry:"Restaurant" },
-  { name:"Goa Luxury Realty", contact:"Priya Desai", status:"Active", value:"$400", service:"Website + Chatbot", next:"Apr 5", industry:"Real Estate" },
-  { name:"Dr. Mehta's Clinic", contact:"Dr. S. Mehta", status:"Proposal", value:"$250", service:"Booking Chatbot", next:"Apr 8", industry:"Healthcare" },
-  { name:"Zara Fashion Store", contact:"Neha Shah", status:"Active", value:"$550", service:"E-comm + Automation", next:"Apr 12", industry:"Retail" },
-  { name:"SunSet Yoga Studio", contact:"Anika Rao", status:"Completed", value:"$150", service:"AI Chatbot", next:"—", industry:"Wellness" },
-  { name:"Bytes Tech Startup", contact:"Karan Mehta", status:"Lead", value:"$800", service:"Pitch Deck + Web", next:"Apr 15", industry:"Tech" },
-  { name:"Panaji Hotel Group", contact:"Mrs. Fernandes", status:"Proposal", value:"$600", service:"WhatsApp + Chatbot", next:"Apr 10", industry:"Hospitality" },
-  { name:"FitLife Coaching", contact:"Jay Sharma", status:"Active", value:"$200", service:"Notion System", next:"Apr 6", industry:"Coaching" },
-  { name:"Mapusa Dental Clinic", contact:"Dr. A. Patel", status:"Lead", value:"$180", service:"AI Chatbot", next:"Apr 18", industry:"Healthcare" },
-  { name:"Bloom Photography", contact:"Sia D'Souza", status:"Completed", value:"$100", service:"Website Design", next:"—", industry:"Creative" },
-  { name:"GreenBite Café", contact:"Rohan Almeida", status:"Active", value:"$250", service:"WhatsApp Automation", next:"Apr 7", industry:"Restaurant" },
-  { name:"NovaTech Solutions", contact:"Amit Kulkarni", status:"Lead", value:"$1,200", service:"Full AI Suite", next:"Apr 20", industry:"Tech" },
-];
+// ── NOTION CONFIG ─────────────────────────────────────────────────────────────
+// Secret is in Vercel environment variables — NOT here
+const NOTION_API_ENDPOINT = '/api/get-notion-data';
 
-const PROJECTS = {
-  "Discovery": [
-    { title:"Dr. Mehta Chatbot Scope", client:"Dr. Mehta's Clinic", tag:"Healthcare", due:"Apr 8", tagColor:"blue" },
-    { title:"Panaji Hotel WhatsApp Setup", client:"Panaji Hotel Group", tag:"Hospitality", due:"Apr 10", tagColor:"purple" },
-  ],
-  "In Progress": [
-    { title:"Coconut Grove AI Bot v2", client:"The Coconut Grove", tag:"Restaurant", due:"Apr 4", tagColor:"amber" },
-    { title:"Zara Automation Workflow", client:"Zara Fashion Store", tag:"Retail", due:"Apr 6", tagColor:"green" },
-    { title:"FitLife Notion Workspace", client:"FitLife Coaching", tag:"Coaching", due:"Apr 7", tagColor:"purple" },
-  ],
-  "Review": [
-    { title:"NovaTech Pitch Deck", client:"Bytes Tech Startup", tag:"Tech", due:"Apr 9", tagColor:"blue" },
-  ],
-  "Done": [
-    { title:"SunSet Yoga Chatbot", client:"SunSet Yoga Studio", tag:"Wellness", due:"Done", tagColor:"green" },
-    { title:"Bloom Photography Site", client:"Bloom Photography", tag:"Creative", due:"Done", tagColor:"amber" },
-  ],
-};
+// ── DATA STATE ────────────────────────────────────────────────────────────────
+let CRM_DATA = [];
+let PROJECTS = {};
+let INVOICES = [];
+let dataLoaded = false;
 
-const SOPS = [
-  {
-    icon:"🚀", iconBg:"#EFF6FF", title:"Client Onboarding Process", category:"Client Management", steps:4, updated:"Mar 28",
-    steps_list:[
-      "Send welcome email with onboarding questionnaire within 2 hours of payment",
-      "Schedule 30-min kickoff call — use Calendly link. Collect: business goals, brand assets, examples they like",
-      "Create client folder in Google Drive: /Clients/[Name]/Assets, Deliverables, Communication",
-      "Add client to CRM with status 'Active', set first check-in reminder for Day 7"
-    ]
-  },
-  {
-    icon:"🤖", iconBg:"#F5F3FF", title:"AI Chatbot Delivery Checklist", category:"Delivery", steps:5, updated:"Mar 25",
-    steps_list:[
-      "Train chatbot on client's business data: menu/services, FAQs, pricing, tone of voice",
-      "Test 20+ conversation scenarios including edge cases and complaints",
-      "Generate embed code and test on staging site across mobile + desktop",
-      "Record a 2-min Loom video walkthrough for the client showing how it works",
-      "Send delivery email with embed code, Loom link, and 30-day support note"
-    ]
-  },
-  {
-    icon:"📊", iconBg:"#FDF6E3", title:"Pitch Deck Creation Workflow", category:"Delivery", steps:4, updated:"Mar 20",
-    steps_list:[
-      "Gather from client: business summary, problem statement, target market, team bios, financials (even rough)",
-      "Use AI to draft narrative: Problem → Solution → Market → Business Model → Traction → Ask",
-      "Design in PowerPoint: custom palette, typography, data visualisation. Max 12 slides",
-      "Deliver .pptx + PDF. Include revision instructions. Max 3 revision rounds per package"
-    ]
-  },
-  {
-    icon:"💰", iconBg:"#FDECEA", title:"Invoice & Payment Process", category:"Finance", steps:3, updated:"Mar 15",
-    steps_list:[
-      "Raise invoice on Fiverr/direct within 24hrs of project agreement. Always take 50% upfront for custom work",
-      "Follow up on overdue invoices at Day 3, Day 7, Day 14 via WhatsApp then email",
-      "Mark paid in Invoice Tracker. Move client status to 'Active'. Log revenue in monthly tracker"
-    ]
-  },
-  {
-    icon:"📱", iconBg:"#E8F4EE", title:"Social Media Content System", category:"Marketing", steps:4, updated:"Mar 10",
-    steps_list:[
-      "Every completed project → screenshot + result metric → drafted into a case study post",
-      "Post schedule: Mon (tip/insight), Wed (case study), Fri (behind the scenes). Use Buffer to schedule",
-      "LinkedIn: professional case studies. Instagram: visual before/afters. Twitter/X: quick AI tips",
-      "Monthly review: check which posts got most enquiries → double down on that format"
-    ]
-  },
-];
+// ── NOTION API HELPERS ────────────────────────────────────────────────────────
+async function queryNotionDatabase(databaseType) {
+  try {
+    const response = await fetch(`${NOTION_API_ENDPOINT}?database=${databaseType}`);
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    return await response.json();
+  } catch (err) {
+    console.error('Error fetching from backend:', err);
+    return { results: [] };
+  }
+}
 
-const INVOICES = [
-  { id:"INV-001", client:"The Coconut Grove", service:"AI Chatbot + WhatsApp", amount:"$300", date:"Mar 1", due:"Mar 15", status:"Paid" },
-  { id:"INV-002", client:"Zara Fashion Store", service:"E-commerce + Automation", amount:"$550", date:"Mar 5", due:"Mar 20", status:"Paid" },
-  { id:"INV-003", client:"Goa Luxury Realty", service:"Website + Chatbot", amount:"$400", date:"Mar 10", due:"Mar 25", status:"Paid" },
-  { id:"INV-004", client:"FitLife Coaching", service:"Notion Workspace", amount:"$200", date:"Mar 18", due:"Apr 2", status:"Pending" },
-  { id:"INV-005", client:"GreenBite Café", service:"WhatsApp Automation", amount:"$250", date:"Mar 20", due:"Apr 4", status:"Pending" },
-  { id:"INV-006", client:"Dr. Mehta's Clinic", service:"AI Chatbot", amount:"$250", date:"Mar 28", due:"Apr 12", status:"Draft" },
-  { id:"INV-007", client:"Panaji Hotel Group", service:"WhatsApp + Chatbot", amount:"$600", date:"Mar 28", due:"Apr 12", status:"Draft" },
-  { id:"INV-008", client:"SunSet Yoga Studio", service:"AI Chatbot", amount:"$150", date:"Feb 15", due:"Mar 1", status:"Paid" },
-  { id:"INV-009", client:"Bloom Photography", service:"Website Design", amount:"$100", date:"Feb 20", due:"Mar 5", status:"Overdue" },
-];
+function getPropertyValue(properties, propName) {
+  const prop = properties[propName];
+  if (!prop) return null;
+  if (prop.type === 'title') return prop.title[0]?.plain_text || '';
+  if (prop.type === 'rich_text') return prop.rich_text[0]?.plain_text || '';
+  if (prop.type === 'phone_number') return prop.phone_number || '';
+  if (prop.type === 'number') return prop.number;
+  if (prop.type === 'select') return prop.select?.name || '';
+  if (prop.type === 'multi_select') return prop.multi_select.map(s => s.name).join(', ');
+  if (prop.type === 'date') return prop.date?.start || '';
+  if (prop.type === 'relation') return prop.relation.map(r => r.id).join(', ');
+  return '';
+}
 
-// ── PAGES ─────────────────────────────────────────────────────────────────────
+// ── LOAD DATA FROM NOTION ─────────────────────────────────────────────────────
+async function loadNotionData() {
+  console.log('Loading Notion data...');
+  
+  // Load Clients
+const clientsRes = await queryNotionDatabase('clients');
+  CRM_DATA = clientsRes.results.map(page => ({
+    id: page.id,
+    name: getPropertyValue(page.properties, 'Client name'),
+    status: getPropertyValue(page.properties, 'status'),
+    phone: getPropertyValue(page.properties, 'Phone'),
+    value: getPropertyValue(page.properties, 'Deal Value'),
+    lastContacted: getPropertyValue(page.properties, 'Last Contacted'),
+    nextAction: getPropertyValue(page.properties, 'Next Action'),
+    service: 'Agency Service',
+    industry: 'Custom',
+    contact: 'Contact Person',
+  })).filter(c => c.name);
+
+  // Load Projects
+const projectsRes = await queryNotionDatabase('projects');
+  PROJECTS = {
+    'Discovery': [],
+    'In Progress': [],
+    'Review': [],
+    'Done': [],
+  };
+  projectsRes.results.forEach(page => {
+    const proj = {
+      id: page.id,
+      title: getPropertyValue(page.properties, 'Project name'),
+      client: getPropertyValue(page.properties, 'Client'),
+      status: getPropertyValue(page.properties, 'Status'),
+      due: getPropertyValue(page.properties, 'Due date'),
+      budget: getPropertyValue(page.properties, 'Budget'),
+      tag: getPropertyValue(page.properties, 'Status'),
+      tagColor: 'blue',
+    };
+    if (proj.title) {
+      const status = proj.status || 'Discovery';
+      if (!PROJECTS[status]) PROJECTS[status] = [];
+      PROJECTS[status].push(proj);
+    }
+  });
+
+  // Load Invoices
+const invoicesRes = await queryNotionDatabase('invoices');
+  INVOICES = invoicesRes.results.map(page => ({
+    id: page.id,
+    invoiceNo: getPropertyValue(page.properties, 'Invoice no'),
+    client: getPropertyValue(page.properties, 'Clients'),
+    amount: getPropertyValue(page.properties, 'Amount'),
+    status: getPropertyValue(page.properties, 'Status'),
+    phone: getPropertyValue(page.properties, 'Phone'),
+    date: new Date().toISOString().split('T')[0],
+    due: 'Pending',
+  })).filter(i => i.invoiceNo);
+
+  dataLoaded = true;
+  document.getElementById('crm-count').textContent = CRM_DATA.length;
+  document.getElementById('proj-count').textContent = Object.values(PROJECTS).flat().length;
+  document.getElementById('inv-count').textContent = INVOICES.length;
+  
+  showPage('crm', document.querySelector('.nav-item.active'));
+}
+
+// ── RENDERING ─────────────────────────────────────────────────────────────────
 function statusBadge(s) {
-  const map = { Active:"green", Completed:"grey", Proposal:"blue", Lead:"amber", Paid:"green", Pending:"amber", Draft:"grey", Overdue:"red" };
+  const map = { Active:'green', Completed:'grey', Proposal:'blue', Lead:'amber', Paid:'green', Pending:'amber', Draft:'grey', Overdue:'red' };
   return `<span class="badge ${map[s]||'grey'}">${s}</span>`;
 }
 
@@ -345,115 +356,78 @@ function getAgentPriority(client) {
 }
 
 function getAgentAction(client) {
-  if (client.name === 'NovaTech Solutions') return 'Send proposal today and lock a discovery call.';
   if (client.status === 'Proposal') return 'Follow up with pricing and schedule a review call.';
   if (client.status === 'Lead') return 'Send intro message and qualify the requirements.';
   if (client.status === 'Active') return 'Share progress update and confirm next milestone.';
-  if (client.status === 'Completed') return 'Request testimonial and offer a retainer plan.';
   return 'Review account and assign next step.';
 }
 
-function getAgentInsightSummary() {
-  const highValueLead = CRM_DATA.find(c => c.name === 'NovaTech Solutions');
-  return {
-    urgent: CRM_DATA.filter(c => ['Lead','Proposal'].includes(c.status)).length,
-    active: CRM_DATA.filter(c => c.status === 'Active').length,
-    overdue: INVOICES.filter(i => i.status === 'Overdue').length,
-    highValueLead
-  };
-}
-
 function renderCRM() {
-  const insight = getAgentInsightSummary();
+  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
+  
+  const activeCount = CRM_DATA.filter(c => c.status === 'Active').length;
+  const totalValue = CRM_DATA.reduce((sum, c) => sum + (parseFloat(String(c.value).replace(/[$,]/g, '')) || 0), 0);
+  
   return `
     <div class="page-header">
       <div class="page-emoji">👥</div>
       <div class="page-h1">Client Relationships</div>
-      <div class="page-desc">Track every client, deal, and follow-up in one place — with an AI ops layer that highlights priority actions.</div>
+      <div class="page-desc">Live sync from Notion — all clients, deals, and follow-ups in one place.</div>
     </div>
 
     <div style="margin-bottom:14px;padding:14px 16px;background:linear-gradient(135deg,#ffffff 0%, #f8fffd 100%);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,118,110,.06)">
       <div style="font-size:13px;color:var(--ink2);line-height:1.65">
-        <strong style="color:var(--ink)">AI-Powered Agency OS</strong><br/>
-        This workspace combines structured ops data with an AI Ops Agent that analyzes pipeline health, suggests next actions, and helps convert leads into clients.
-      </div>
-    </div>
-
-    <div style="background:linear-gradient(135deg,var(--accentBg) 0%, #eefcf7 100%);border:1px solid #BFE7DA;padding:14px 16px;border-radius:12px;margin-bottom:18px;box-shadow:0 8px 22px rgba(15,118,110,.08)">
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <div style="width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤖</div>
-        <div style="font-size:13px;line-height:1.7;color:var(--ink2)">
-          <strong style="color:var(--ink)">Ops Agent Insight</strong><br/>
-          • ${insight.urgent} pipeline opportunities need follow-up within 48 hours<br/>
-          • Highest priority: <strong>${insight.highValueLead.name} (${insight.highValueLead.value})</strong><br/>
-          • Suggested action: ${getAgentAction(insight.highValueLead)}<br/>
-          • Revenue risk: ${insight.overdue} overdue invoice requires attention
-        </div>
+        <strong style="color:var(--ink)">🔄 Live Notion Integration</strong><br/>
+        This workspace is connected directly to your Notion databases. All client data updates instantly across the system.
       </div>
     </div>
 
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">12</div><div class="stat-label">Total Clients</div><div class="stat-delta">↑ 3 this month</div></div>
-      <div class="stat-card"><div class="stat-val">${insight.active}</div><div class="stat-label">Active</div><div class="stat-delta">Healthy delivery load</div></div>
-      <div class="stat-card"><div class="stat-val">${insight.urgent}</div><div class="stat-label">Needs Action</div><div class="stat-delta">Agent-monitored pipeline</div></div>
-      <div class="stat-card"><div class="stat-val">$3.4k</div><div class="stat-label">Monthly Rev</div><div class="stat-delta">↑ 22% vs last</div></div>
+      <div class="stat-card"><div class="stat-val">${CRM_DATA.length}</div><div class="stat-label">Total Clients</div></div>
+      <div class="stat-card"><div class="stat-val">${activeCount}</div><div class="stat-label">Active</div></div>
+      <div class="stat-card"><div class="stat-val">$${(totalValue / 1000).toFixed(1)}k</div><div class="stat-label">Pipeline Value</div></div>
+      <div class="stat-card"><div class="stat-val">${CRM_DATA.length}</div><div class="stat-label">Month Growth</div></div>
     </div>
 
     <div class="table-wrap">
       <div class="table-header">
-        <span class="table-title">All Clients · Agent Prioritized View</span>
-        <div class="table-actions">
-          <button class="tb-btn ghost" onclick="alert('🤖 Agent Filter
-
-Filter by urgency, stage, industry, or deal value to focus on the most important actions first.')">Filter</button>
-        </div>
+        <span class="table-title">All Clients from Notion</span>
       </div>
       <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>Client</th><th>Contact</th><th class="hide-mobile">Service</th>
-          <th>Status</th><th class="hide-mobile">Value</th><th>Next Action</th>
+          <th>Client</th><th>Phone</th><th class="hide-mobile">Next Action</th>
+          <th>Status</th><th class="hide-mobile">Value</th><th>Last Contacted</th>
         </tr></thead>
         <tbody>
-          ${CRM_DATA.map(c=>`<tr onclick="alert('🤖 Ops Agent
-
-Client: ${c.name}
-Stage: ${c.status}
-Priority: ${getAgentPriority(c)}
-Industry: ${c.industry}
-
-Suggested next step:
-→ ${getAgentAction(c)}')">
-            <td><div style="font-weight:500;color:var(--ink)">${c.name}</div><div style="font-size:10px;color:var(--ink3);font-family:'DM Mono',monospace">${c.industry} · ${getAgentPriority(c)} Priority</div></td>
-            <td>${c.contact}</td>
-            <td class="hide-mobile" style="font-size:12px;color:var(--ink3)">${c.service}</td>
+          ${CRM_DATA.map(c=>`<tr>
+            <td><div style="font-weight:500;color:var(--ink)">${c.name}</div></td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${c.phone}</td>
+            <td class="hide-mobile" style="font-size:11px;color:var(--ink3)">${c.nextAction}</td>
             <td>${statusBadge(c.status)}</td>
-            <td class="hide-mobile" style="font-weight:500;color:var(--accent)">${c.value}</td>
-            <td style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace">${getAgentAction(c)}</td>
+            <td class="hide-mobile" style="font-weight:500;color:var(--accent);font-family:'DM Mono',monospace">${c.value}</td>
+            <td style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace">${c.lastContacted || '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
       </div>
-    </div>
-
-    <div style="margin-top:14px;padding:12px 14px;background:#FAFAF8;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--ink3);line-height:1.7">
-      ⚡ <strong style="color:var(--ink2)">Automation Layer</strong><br/>
-      When a new lead is added, the Ops Agent assigns priority, suggests a reply, and creates the next follow-up task based on deal value and stage.
     </div>`;
 }
 
 function renderProjects() {
+  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
+  
   return `
     <div class="page-header">
       <div class="page-emoji">📋</div>
       <div class="page-h1">Project Tracker</div>
-      <div class="page-desc">Pipeline view for delivery flow, with agent-aware milestones and priority context.</div>
+      <div class="page-desc">Live pipeline view synced directly from your Notion projects database.</div>
     </div>
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">8</div><div class="stat-label">Active</div></div>
-      <div class="stat-card"><div class="stat-val">2</div><div class="stat-label">In Review</div></div>
-      <div class="stat-card"><div class="stat-val">2</div><div class="stat-label">Delivered</div></div>
-      <div class="stat-card"><div class="stat-val">Apr 10</div><div class="stat-label">Next Deadline</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'In Progress').length}</div><div class="stat-label">In Progress</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'Review').length}</div><div class="stat-label">In Review</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().filter(p => p.status === 'Done').length}</div><div class="stat-label">Delivered</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.values(PROJECTS).flat().length}</div><div class="stat-label">Total</div></div>
     </div>
     <div class="kanban">
       ${Object.entries(PROJECTS).map(([col,cards])=>`
@@ -463,69 +437,56 @@ function renderProjects() {
             <span class="col-count">${cards.length}</span>
           </div>
           ${cards.map(c=>`
-            <div class="kanban-card" onclick="alert('Project: ${c.title}\\nClient: ${c.client}\\nDue: ${c.due}')">
+            <div class="kanban-card">
               <div class="card-title">${c.title}</div>
-              <div class="card-meta">
-                <span class="badge ${c.tagColor}">${c.tag}</span>
-                <span class="card-due">${c.due}</span>
-              </div>
               <div style="margin-top:6px;font-size:10px;color:var(--ink3)">${c.client}</div>
+              <div class="card-meta" style="margin-top:6px">
+                <span style="font-size:9px;color:var(--ink3)">${c.status}</span>
+                ${c.due ? `<span class="card-due">${c.due}</span>` : ''}
+              </div>
             </div>`).join('')}
         </div>`).join('')}
     </div>`;
 }
 
-function renderCalendar() {
-  const events = {
-    1:[{text:"Coconut Grove delivery",color:"#E8F4EE",tc:"var(--accent)"}],
-    3:[{text:"Client call – Dr. Mehta",color:"#EFF6FF",tc:"var(--blue)"}],
-    5:[{text:"Instagram post – tip",color:"#F5F3FF",tc:"var(--purple)"}],
-    7:[{text:"GreenBite go-live",color:"#E8F4EE",tc:"var(--accent)"}],
-    8:[{text:"FitLife Notion handover",color:"#FDF6E3",tc:"var(--amber)"}],
-    10:[{text:"Panaji Hotel kickoff",color:"#EFF6FF",tc:"var(--blue)"}],
-    12:[{text:"LinkedIn case study",color:"#F5F3FF",tc:"var(--purple)"}],
-    14:[{text:"Weekly review",color:"var(--bg3)",tc:"var(--ink3)"}],
-    15:[{text:"NovaTech deck delivery",color:"#EFF6FF",tc:"var(--blue)"}],
-    16:[{text:"Invoice follow-ups",color:"#FDECEA",tc:"var(--red)"}],
-    19:[{text:"Zara automation review",color:"#E8F4EE",tc:"var(--accent)"}],
-    21:[{text:"Reel – behind the scenes",color:"#F5F3FF",tc:"var(--purple)"}],
-    23:[{text:"Dr. Mehta delivery",color:"#E8F4EE",tc:"var(--accent)"}],
-    26:[{text:"Monthly revenue report",color:"#FDF6E3",tc:"var(--amber)"}],
-    28:[{text:"Blog post: AI for restaurants",color:"#F5F3FF",tc:"var(--purple)"}],
-  };
-  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  let cells = '';
-  // April 2026 layout starts on Tuesday — 1 empty cell
-  cells += `<div class="cal-cell empty"></div>`;
-  for(let d=1;d<=30;d++){
-    const ev = events[d]||[];
-    const isToday = d===12;
-    cells += `<div class="cal-cell${isToday?' today':''}">
-      <div class="cal-date">${d}</div>
-      ${ev.map(e=>`<div class="cal-event" style="background:${e.color};color:${e.tc}">${e.text}</div>`).join('')}
-    </div>`;
-  }
-  // Fill remaining cells
-  const total = 31; // 1 empty + 30 days
-  const rem = (7 - (total % 7)) % 7;
-  for(let i=0;i<rem;i++) cells += `<div class="cal-cell empty"></div>`;
-
+function renderInvoices() {
+  if (!dataLoaded) return '<div class="loading">Syncing from Notion</div>';
+  
+  const paid = INVOICES.filter(i => i.status === 'Paid').reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
+  const pending = INVOICES.filter(i => i.status === 'Pending').reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
+  const total = INVOICES.reduce((s, i) => s + (parseFloat(String(i.amount).replace(/[$,]/g, '')) || 0), 0);
+  
   return `
     <div class="page-header">
-      <div class="page-emoji" style="display:inline-flex;align-items:center;gap:0;flex-direction:column;width:42px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.04)"><span style="width:100%;background:var(--accent);color:#fff;font-size:9px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;text-align:center;padding:3px 0">Apr</span><strong style="font-size:20px;line-height:1;color:var(--ink);padding:7px 0 8px">12</strong></div>
-      <div class="page-h1">Content Calendar</div>
-      <div class="page-desc">April 2026 — content, calls, and delivery schedule, surfaced through an ops-first planning view.</div>
+      <div class="page-emoji">💰</div>
+      <div class="page-h1">Invoice Tracker</div>
+      <div class="page-desc">All billing synced live from Notion — sent, pending, and overdue.</div>
     </div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-val">12</div><div class="stat-label">Posts Planned</div></div>
-      <div class="stat-card"><div class="stat-val">5</div><div class="stat-label">Client Calls</div></div>
-      <div class="stat-card"><div class="stat-val">6</div><div class="stat-label">Deliveries</div></div>
-      <div class="stat-card"><div class="stat-val">3</div><div class="stat-label">Invoices Due</div></div>
+    <div class="invoice-summary">
+      <div class="inv-card"><div class="inv-val green">$${paid.toLocaleString()}</div><div class="inv-label">Collected</div></div>
+      <div class="inv-card"><div class="inv-val amber">$${pending.toLocaleString()}</div><div class="inv-label">Pending</div></div>
+      <div class="inv-card"><div class="inv-val">$${total.toLocaleString()}</div><div class="inv-label">Total Billed</div></div>
+      <div class="inv-card"><div class="inv-val" style="color:var(--ink2)">${INVOICES.length}</div><div class="inv-label">Invoices</div></div>
     </div>
-    <div class="table-wrap" style="padding:14px">
-      <div class="cal-grid">
-        ${days.map(d=>`<div class="cal-day-header">${d}</div>`).join('')}
-        ${cells}
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">All Invoices from Notion</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Invoice</th><th>Client</th><th>Amount</th><th>Status</th><th>Phone</th>
+        </tr></thead>
+        <tbody>
+          ${INVOICES.map(inv=>`<tr>
+            <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)">${inv.invoiceNo}</span></td>
+            <td style="font-weight:500;color:var(--ink)">${inv.client}</td>
+            <td style="font-weight:600;color:var(--ink);font-family:'DM Mono',monospace">$${inv.amount}</td>
+            <td>${statusBadge(inv.status)}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${inv.phone || '—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
       </div>
     </div>`;
 }
@@ -535,146 +496,61 @@ function renderSOP() {
     <div class="page-header">
       <div class="page-emoji">📖</div>
       <div class="page-h1">SOP Library</div>
-      <div class="page-desc">Standard operating procedures — how we run every process, every time.</div>
+      <div class="page-desc">Standard operating procedures — operational playbooks.</div>
     </div>
-    <div class="sop-list">
-      ${SOPS.map((s,i)=>`
-        <div class="sop-card" id="sop-${i}">
-          <div class="sop-header" onclick="toggleSOP(${i})">
-            <div class="sop-icon" style="background:${s.iconBg}">${s.icon}</div>
-            <div class="sop-info">
-              <div class="sop-title">${s.title}</div>
-              <div class="sop-meta">${s.category} · ${s.steps_list.length} steps · Updated ${s.updated}</div>
-            </div>
-            <span class="sop-arrow">▶</span>
-          </div>
-          <div class="sop-body">
-            ${s.steps_list.map((step,j)=>`
-              <div class="sop-step">
-                <div class="step-num">${j+1}</div>
-                <div class="step-text">${step}</div>
-              </div>`).join('')}
-          </div>
-        </div>`).join('')}
-    </div>`;
-}
-
-function renderInvoices() {
-  const paid = INVOICES.filter(i=>i.status==='Paid').reduce((s,i)=>s+parseFloat(i.amount.replace('$','')),0);
-  const pending = INVOICES.filter(i=>i.status==='Pending').reduce((s,i)=>s+parseFloat(i.amount.replace('$','')),0);
-  const overdue = INVOICES.filter(i=>i.status==='Overdue').reduce((s,i)=>s+parseFloat(i.amount.replace('$','')),0);
-  return `
-    <div class="page-header">
-      <div class="page-emoji">💰</div>
-      <div class="page-h1">Invoice Tracker</div>
-      <div class="page-desc">All billing in one place — sent, pending, overdue.</div>
-    </div>
-    <div class="invoice-summary">
-      <div class="inv-card"><div class="inv-val green">$${paid.toLocaleString()}</div><div class="inv-label">Collected</div></div>
-      <div class="inv-card"><div class="inv-val amber">$${pending.toLocaleString()}</div><div class="inv-label">Pending</div></div>
-      <div class="inv-card"><div class="inv-val red">$${overdue.toLocaleString()}</div><div class="inv-label">Overdue</div></div>
-      <div class="inv-card"><div class="inv-val" style="color:var(--ink2)">$${(paid+pending+overdue).toLocaleString()}</div><div class="inv-label">Total Billed</div></div>
-    </div>
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">All Invoices</span>
-      </div>
-      <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th>Invoice</th><th>Client</th><th class="hide-mobile">Service</th>
-          <th>Amount</th><th class="hide-mobile">Due Date</th><th>Status</th>
-        </tr></thead>
-        <tbody>
-          ${INVOICES.map(inv=>`<tr onclick="alert('Invoice ${inv.id}\\nClient: ${inv.client}\\nAmount: ${inv.amount}\\nStatus: ${inv.status}')">
-            <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3)">${inv.id}</span></td>
-            <td style="font-weight:500;color:var(--ink)">${inv.client}</td>
-            <td class="hide-mobile" style="font-size:11px;color:var(--ink3)">${inv.service}</td>
-            <td style="font-weight:600;color:var(--ink);font-family:'DM Mono',monospace">${inv.amount}</td>
-            <td class="hide-mobile" style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace">${inv.due}</td>
-            <td>${statusBadge(inv.status)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      </div>
+    <div style="text-align:center;padding:40px;color:var(--ink3)">
+      <div style="font-size:48px;margin-bottom:14px">📖</div>
+      <div style="font-size:14px;margin-bottom:8px">SOP Library Ready</div>
+      <div style="font-size:12px;line-height:1.6;max-width:300px;margin:0 auto">Your SOPs sync from a connected Notion database. Add procedures there and they appear here instantly.</div>
     </div>`;
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
-const PAGES = { crm:renderCRM, projects:renderProjects, calendar:renderCalendar, sop:renderSOP, invoices:renderInvoices };
-const TITLES = { crm:"CRM · Clients", projects:"Projects · Pipeline", calendar:"Content Calendar · April 2026", sop:"SOP Library", invoices:"Invoices · Billing" };
+const PAGES = { 
+  crm: renderCRM, 
+  projects: renderProjects, 
+  calendar: () => renderCalendar(), 
+  sop: renderSOP, 
+  invoices: renderInvoices 
+};
+const TITLES = { 
+  crm: "CRM · Clients", 
+  projects: "Projects · Pipeline", 
+  calendar: "Content Calendar", 
+  sop: "SOP Library", 
+  invoices: "Invoices · Billing" 
+};
 
 function showPage(id, el) {
   document.getElementById('content').innerHTML = PAGES[id]();
   document.getElementById('topbar-title').textContent = TITLES[id];
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
   closeSidebar();
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
-
 
 function showQuickLink(id, el) {
   const content = document.getElementById('content');
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
 
   if (id === 'today') {
     document.getElementById('topbar-title').textContent = "Today's Tasks";
-    content.innerHTML = `
-      <div class="page-header">
-        <div class="page-emoji">⚡</div>
-        <div class="page-h1">Today's Tasks</div>
-        <div class="page-desc">Priority actions surfaced by the Ops Agent for today.</div>
-      </div>
-      <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Recommended Priorities</span></div>
-        <div style="padding:16px;display:grid;gap:10px">
-          <div class="kanban-card"><div class="card-title">Send proposal to NovaTech Solutions</div><div class="card-meta"><span class="badge blue">High Value</span><span class="card-due">Today</span></div><div style="margin-top:6px;font-size:10px;color:var(--ink3)">Potential $1,200 deal · move lead toward call</div></div>
-          <div class="kanban-card"><div class="card-title">Follow up with Panaji Hotel Group</div><div class="card-meta"><span class="badge purple">Proposal</span><span class="card-due">Today</span></div><div style="margin-top:6px;font-size:10px;color:var(--ink3)">Confirm WhatsApp setup scope and next milestone</div></div>
-          <div class="kanban-card"><div class="card-title">Review Zara Automation Workflow</div><div class="card-meta"><span class="badge green">In Progress</span><span class="card-due">Today</span></div><div style="margin-top:6px;font-size:10px;color:var(--ink3)">Check delivery blockers before next client update</div></div>
-        </div>
-      </div>`;
+    content.innerHTML = `<div class="page-header"><div class="page-emoji">⚡</div><div class="page-h1">Today's Tasks</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Tasks sync from your Notion client database</div></div>`;
   } else if (id === 'reminders') {
     document.getElementById('topbar-title').textContent = "Reminders";
-    content.innerHTML = `
-      <div class="page-header">
-        <div class="page-emoji">🔔</div>
-        <div class="page-h1">Reminders</div>
-        <div class="page-desc">Important follow-ups and pending actions detected across clients, projects, and billing.</div>
-      </div>
-      <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Pending Reminders</span></div>
-        <div style="padding:16px;display:grid;gap:10px">
-          <div class="kanban-card"><div class="card-title">Bloom Photography invoice overdue</div><div class="card-meta"><span class="badge red">Overdue</span><span class="card-due">Immediate</span></div></div>
-          <div class="kanban-card"><div class="card-title">Dr. Mehta proposal follow-up</div><div class="card-meta"><span class="badge blue">Proposal</span><span class="card-due">Next 24 hrs</span></div></div>
-          <div class="kanban-card"><div class="card-title">FitLife workspace handover</div><div class="card-meta"><span class="badge purple">Delivery</span><span class="card-due">Apr 8</span></div></div>
-        </div>
-      </div>`;
+    content.innerHTML = `<div class="page-header"><div class="page-emoji">🔔</div><div class="page-h1">Reminders</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Reminders from your active projects</div></div>`;
   } else if (id === 'settings') {
     document.getElementById('topbar-title').textContent = "Agent Settings";
-    content.innerHTML = `
-      <div class="page-header">
-        <div class="page-emoji">⚙️</div>
-        <div class="page-h1">Agent Settings</div>
-        <div class="page-desc">Core preferences and operating rules for the AI Ops Agent.</div>
-      </div>
-      <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Configuration Snapshot</span></div>
-        <div style="padding:16px;display:grid;gap:12px">
-          <div style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px"><strong>Tone:</strong> Professional, warm, concise</div>
-          <div style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px"><strong>Priority Logic:</strong> Revenue potential + due date + client stage</div>
-          <div style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px"><strong>Communication Channels:</strong> Notion, website chat, WhatsApp integration in progress</div>
-        </div>
-      </div>`;
+    content.innerHTML = `<div class="page-header"><div class="page-emoji">⚙️</div><div class="page-h1">Agent Settings</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Connected to Notion via API</div></div>`;
   }
   closeSidebar();
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
-function toggleSOP(i) {
-  const card = document.getElementById('sop-'+i);
-  card.classList.toggle('open');
+function renderCalendar() {
+  return `<div class="page-header"><div class="page-emoji">📅</div><div class="page-h1">Content Calendar</div></div><div style="text-align:center;padding:40px;color:var(--ink3)"><div>Calendar syncs from your Notion workspace</div></div>`;
 }
 
 function openSidebar() {
@@ -688,214 +564,61 @@ function closeSidebar() {
 }
 
 // Init
-showPage('crm', document.querySelector('.nav-item.active'));
+loadNotionData().then(() => showPage('crm', document.querySelector('.nav-item.active')));
 </script>
 
 <!-- ── AI AGENT CHAT OVERLAY ──────────────────────────────────────────────── -->
 <style>
 .agent-fab{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .agent-tooltip{background:var(--ink);color:#fff;padding:7px 13px;border-radius:8px;font-size:12px;white-space:nowrap;animation:fadeIn 0.4s ease 1s both;font-family:'DM Mono',monospace}
-.agent-tooltip::after{content:'';position:absolute;bottom:-5px;right:18px;width:8px;height:8px;background:var(--ink);transform:rotate(45deg)}
 .agent-btn{width:52px;height:52px;border-radius:50%;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(0,0,0,0.2);transition:all 0.2s}
 .agent-btn:hover{transform:scale(1.08);background:var(--ink2)}
-
-.agent-panel{position:fixed;bottom:90px;right:24px;width:380px;height:560px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.15);display:none;flex-direction:column;z-index:1000;overflow:hidden;animation:fadeIn 0.3s ease}
+.agent-panel{position:fixed;bottom:90px;right:24px;width:380px;height:560px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.15);display:none;flex-direction:column;z-index:1000;overflow:hidden}
 .agent-panel.open{display:flex}
 .agent-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
 .agent-avatar{width:32px;height:32px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Instrument Serif',serif;font-size:14px;font-style:italic;flex-shrink:0}
-.agent-header-info{flex:1}
 .agent-header-name{font-size:13px;font-weight:600;color:var(--ink)}
-.agent-header-status{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px}
-.agent-header-status::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent)}
-.agent-close{background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:4px;border-radius:4px;transition:background 0.15s}
-.agent-close:hover{background:var(--bg2)}
-
+.agent-header-status{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace}
+.agent-close{background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:4px;margin-left:auto}
 .agent-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.agent-messages::-webkit-scrollbar{width:3px}
-.agent-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-
-.msg-row{display:flex;gap:8px;align-items:flex-start;animation:fadeIn 0.3s ease}
-.msg-row.user{flex-direction:row-reverse}
-.msg-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:2px}
-.msg-avatar.agent{background:var(--ink);color:#fff;font-family:'Instrument Serif',serif;font-style:italic}
-.msg-avatar.user{background:var(--accent);color:#fff}
-.msg-bubble{max-width:78%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.6;color:var(--ink)}
-.msg-bubble.agent{background:var(--surface2);border:1px solid var(--border);border-radius:12px 12px 12px 3px}
-.msg-bubble.user{background:var(--ink);color:#fff;border-radius:12px 12px 3px 12px}
-.msg-bubble.error{background:var(--redBg);border:1px solid #fca5a5;color:var(--red)}
-
-.typing-indicator{display:flex;gap:4px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px 12px 12px 3px;width:fit-content}
-.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--ink3);animation:pulse 1.2s infinite}
-.typing-dot:nth-child(2){animation-delay:0.2s}
-.typing-dot:nth-child(3){animation-delay:0.4s}
-
-.agent-suggestions{padding:8px 14px;display:flex;gap:6px;overflow-x:auto;border-top:1px solid var(--border);background:var(--surface2)}
-.agent-suggestions::-webkit-scrollbar{display:none}
-.suggestion-chip{background:none;border:1px solid var(--border);color:var(--ink2);padding:4px 10px;border-radius:20px;font-size:10px;cursor:pointer;white-space:nowrap;transition:all 0.15s;font-family:'DM Mono',monospace;flex-shrink:0}
-.suggestion-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accentBg)}
-
-.agent-input-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface)}
-.agent-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Geist',system-ui;color:var(--ink);background:var(--surface2);resize:none;outline:none;max-height:100px;line-height:1.5;transition:border-color 0.15s}
-.agent-input:focus{border-color:var(--accent)}
-.agent-send{width:34px;height:34px;border-radius:8px;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;transition:all 0.15s;flex-shrink:0}
-.agent-send:hover{background:var(--ink2)}
-.agent-send:disabled{background:var(--bg3);cursor:not-allowed}
-
-@media(max-width:480px){
-  .agent-panel{width:calc(100vw - 32px);right:16px;bottom:80px}
-}
+.msg-row{display:flex;gap:8px;animation:fadeIn 0.3s ease}
+.msg-bubble{max-width:78%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.6}
+.msg-bubble.agent{background:var(--surface2);border:1px solid var(--border)}
+.msg-bubble.user{background:var(--ink);color:#fff}
+.agent-input-row{padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px}
+.agent-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Geist',system-ui}
+.agent-input:focus{border-color:var(--accent);outline:none}
+.agent-send{width:34px;height:34px;border-radius:8px;background:var(--ink);border:none;cursor:pointer;color:#fff;flex-shrink:0}
 </style>
-
-<!-- FAB Button -->
 <div class="agent-fab">
-  <div class="agent-tooltip" id="agentTooltip">✦ Ask your Ops Agent</div>
-  <button class="agent-btn" onclick="toggleAgent()" id="agentBtn" title="AI Ops Agent">✦</button>
+  <div class="agent-tooltip">✦ Ask your Ops Agent</div>
+  <button class="agent-btn" onclick="toggleAgent()">✦</button>
 </div>
-
-<!-- Chat Panel -->
 <div class="agent-panel" id="agentPanel">
   <div class="agent-panel-header">
     <div class="agent-avatar">H</div>
-    <div class="agent-header-info">
+    <div style="flex:1">
       <div class="agent-header-name">Agency OS Agent</div>
       <div class="agent-header-status">Connected to Notion</div>
     </div>
     <button class="agent-close" onclick="toggleAgent()">✕</button>
   </div>
-
-  <div class="agent-messages" id="agentMessages">
+  <div class="agent-messages">
     <div class="msg-row">
-      <div class="msg-avatar agent">H</div>
-      <div class="msg-bubble agent">Good to see you! I'm your Agency OS Agent — connected live to your Notion workspace. I can add clients, create projects, show your dashboard and more. What do you need? ✦</div>
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;flex-shrink:0">H</div>
+      <div class="msg-bubble agent">Your ops data is live from Notion. ✦</div>
     </div>
   </div>
-
-  <div class="agent-suggestions" id="agentSuggestions">
-    <button class="suggestion-chip" onclick="sendSuggestion(this)">Show my clients</button>
-    <button class="suggestion-chip" onclick="sendSuggestion(this)">Dashboard summary</button>
-    <button class="suggestion-chip" onclick="sendSuggestion(this)">Projects in progress</button>
-    <button class="suggestion-chip" onclick="sendSuggestion(this)">Add new client</button>
-    <button class="suggestion-chip" onclick="sendSuggestion(this)">Pending payments</button>
-  </div>
-
   <div class="agent-input-row">
-    <textarea class="agent-input" id="agentInput" placeholder="Ask anything about your agency..." rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
-      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-    <button class="agent-send" id="agentSendBtn" onclick="sendMessage()">↑</button>
+    <input class="agent-input" placeholder="Ask about your clients..." />
+    <button class="agent-send">↑</button>
   </div>
 </div>
-
 <script>
-// ── AGENT STATE ───────────────────────────────────────────────────────────────
-const AGENT_URL = 'https://hs-ops-agent.vercel.app/api/notion-agent';
 let agentOpen = false;
-let agentHistory = [];
-let tooltipHidden = false;
-
 function toggleAgent() {
   agentOpen = !agentOpen;
   document.getElementById('agentPanel').classList.toggle('open', agentOpen);
-  document.getElementById('agentBtn').textContent = agentOpen ? '✕' : '✦';
-  if (!tooltipHidden) {
-    document.getElementById('agentTooltip').style.display = 'none';
-    tooltipHidden = true;
-  }
-  if (agentOpen) document.getElementById('agentInput').focus();
-}
-
-// Auto-hide tooltip after 5 seconds
-setTimeout(() => {
-  const tip = document.getElementById('agentTooltip');
-  if (tip && !tooltipHidden) {
-    tip.style.opacity = '0';
-    tip.style.transition = 'opacity 0.5s';
-    setTimeout(() => { tip.style.display = 'none'; tooltipHidden = true; }, 500);
-  }
-}, 5000);
-
-function sendSuggestion(btn) {
-  document.getElementById('agentInput').value = btn.textContent;
-  sendMessage();
-}
-
-function appendMessage(role, text, isError = false) {
-  const messages = document.getElementById('agentMessages');
-  const row = document.createElement('div');
-  row.className = `msg-row ${role}`;
-  const avatar = document.createElement('div');
-  avatar.className = `msg-avatar ${role}`;
-  avatar.textContent = role === 'agent' ? 'H' : 'Y';
-  const bubble = document.createElement('div');
-  bubble.className = `msg-bubble ${role}${isError ? ' error' : ''}`;
-  bubble.textContent = text;
-  row.appendChild(avatar);
-  row.appendChild(bubble);
-  messages.appendChild(row);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function showTyping() {
-  const messages = document.getElementById('agentMessages');
-  const row = document.createElement('div');
-  row.className = 'msg-row';
-  row.id = 'typingRow';
-  const avatar = document.createElement('div');
-  avatar.className = 'msg-avatar agent';
-  avatar.textContent = 'H';
-  const indicator = document.createElement('div');
-  indicator.className = 'typing-indicator';
-  indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-  row.appendChild(avatar);
-  row.appendChild(indicator);
-  messages.appendChild(row);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function hideTyping() {
-  const row = document.getElementById('typingRow');
-  if (row) row.remove();
-}
-
-async function sendMessage() {
-  const input = document.getElementById('agentInput');
-  const sendBtn = document.getElementById('agentSendBtn');
-  const text = input.value.trim();
-  if (!text) return;
-
-  // Add user message
-  appendMessage('user', text);
-  agentHistory.push({ role: 'user', content: text });
-  input.value = '';
-  input.style.height = 'auto';
-  sendBtn.disabled = true;
-
-  // Show typing
-  showTyping();
-
-  try {
-    const response = await fetch(AGENT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: agentHistory }),
-    });
-
-    const data = await response.json();
-    hideTyping();
-
-    if (data.response) {
-      appendMessage('agent', data.response);
-      agentHistory.push({ role: 'assistant', content: data.response });
-    } else if (data.error) {
-      appendMessage('agent', `Error: ${data.error}`, true);
-    }
-  } catch (err) {
-    hideTyping();
-    appendMessage('agent', 'Connection error — make sure the agent is deployed and try again.', true);
-  } finally {
-    sendBtn.disabled = false;
-    input.focus();
-  }
 }
 </script>
 </body>
