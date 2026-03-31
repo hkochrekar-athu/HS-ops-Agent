@@ -282,6 +282,7 @@ async function loadData() {
     lastContacted: getPropertyValue(page.properties, 'Last Contacted'),
     nextAction: getPropertyValue(page.properties, 'Next Action'),
   })).filter(c => c.name);
+  console.log("CRM_DATA:", CRM_DATA);
 
   PROJECTS = projectsRes.results.map(page => ({
     id: page.id,
