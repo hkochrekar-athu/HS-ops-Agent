@@ -129,13 +129,13 @@ const tools = [
   },
 ];
 
-async function findClientPageIdByName(clientName) {
+async function findClientPageIdByName(ClientName) {
   if (!clientName || !CLIENTS_DB) return null;
 
   const response = await notion.databases.query({
     database_id: CLIENTS_DB,
     filter: {
-      property: "Name",
+      property: "Client Name",
       title: {
         equals: clientName,
       },
@@ -148,10 +148,10 @@ async function findClientPageIdByName(clientName) {
 
 async function addClient(input) {
   if (!CLIENTS_DB) throw new Error("CLIENTS_DB environment variable is not set");
-  if (!input.name?.trim()) throw new Error("Client name is required");
+  if (!input.name?.trim()) throw new Error("Client Name is required");
 
   const props = {
-    Name: {
+   "Client Name": {
       title: [{ text: { content: input.name.trim() } }],
     },
   };
@@ -204,7 +204,7 @@ async function getClients(input) {
   });
 
   return response.results.map((page) => ({
-    name: page.properties["Name"]?.title?.[0]?.plain_text || "Unnamed",
+    name: page.properties["Client Name"]?.title?.[0]?.plain_text || "Unnamed",
     status: page.properties["Status"]?.select?.name || "—",
     deal_value: page.properties["Deal Value"]?.number ?? null,
     last_contacted: page.properties["Last Contacted"]?.date?.start || "—",
