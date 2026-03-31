@@ -621,5 +621,78 @@ function toggleAgent() {
   document.getElementById('agentPanel').classList.toggle('open', agentOpen);
 }
 </script>
+<script>
+const AGENT_URL = '/api/notion-agent';
+
+async function sendMessage(message) {
+  const messagesContainer = document.querySelector('.agent-messages');
+
+  // user message
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg-row';
+  userMsg.innerHTML = `
+    <div class="msg-bubble user">${message}</div>
+  `;
+  messagesContainer.appendChild(userMsg);
+
+  // typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'msg-row';
+  typing.innerHTML = `
+    <div class="msg-bubble agent">Typing...</div>
+  `;
+  messagesContainer.appendChild(typing);
+
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  try {
+    const res = await fetch(AGENT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: message }]
+      })
+    });
+
+    const data = await res.json();
+
+    typing.remove();
+
+    const reply = document.createElement('div');
+    reply.className = 'msg-row';
+    reply.innerHTML = `
+      <div class="msg-bubble agent">${data.reply || data.error || 'No response'}</div>
+    `;
+    messagesContainer.appendChild(reply);
+
+  } catch (err) {
+    typing.remove();
+
+    const error = document.createElement('div');
+    error.className = 'msg-row';
+    error.innerHTML = `
+      <div class="msg-bubble agent">Error connecting to agent</div>
+    `;
+    messagesContainer.appendChild(error);
+  }
+
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// send button
+document.querySelector('.agent-send').onclick = () => {
+  const input = document.querySelector('.agent-input');
+  if (!input.value.trim()) return;
+  sendMessage(input.value.trim());
+  input.value = '';
+};
+
+// enter key
+document.querySelector('.agent-input').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    document.querySelector('.agent-send').click();
+  }
+});
+</script>
 </body>
 </html>
