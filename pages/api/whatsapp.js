@@ -140,7 +140,6 @@ const TOOLS = [
 
 // ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function runTool(name, input) {
-  const IDS = {
     const IDS = {
   crm:
     process.env.NOTION_CLIENTS_DATABASE_ID ||
