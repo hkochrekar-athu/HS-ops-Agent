@@ -72,7 +72,7 @@ async function queryDb(dbId) {
 const TOOLS = [
   {
     name: "add_client",
-    description: "Add a new client to the Notion Clients database",
+    description: "Add a new client to the Notion clients database",
     input_schema: {
       type: "object",
       properties: {
