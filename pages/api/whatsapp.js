@@ -156,7 +156,7 @@ async function runTool(name, input) {
 };
   try {
     if (name === "add_client") {
-      if (!IDS.clients return { ok: false, error: "Clients DB not connected" };
+      if (!IDS.clients) return { ok: false, error: "Clients DB not connected" };
 
       await createPage(IDS.clients, {
         "Client Name": {
