@@ -162,24 +162,7 @@ async function runTool(name, input) {
         "Client Name": {
           title: [{ text: { content: input.name || "New Client" } }],
         },
-        "Status": {
-          select: { name: input.status || "Lead" },
-        },
-        "Phone": {
-          phone_number: input.contact || "",
-        },
-        "Deal Value": {
-          number: typeof input.value === "number" ? input.value : null,
-        },
-        "Next Action": {
-          rich_text: [
-            {
-              text: {
-                content: input.service || "Follow up via WhatsApp",
-              },
-            },
-          ],
-        },
+      
       });
 
       return { ok: true, msg: `Client "${input.name}" added to Clients` };
