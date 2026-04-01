@@ -159,7 +159,7 @@ async function runTool(name, input) {
       if (!IDS.clients) return { ok: false, error: "Clients DB not connected" };
 
       await createPage(IDS.clients, {
-        "Client Name": {
+        "Name": {
           title: [{ text: { content: input.name || "New Client" } }],
         },
       
