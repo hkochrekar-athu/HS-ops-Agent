@@ -13,7 +13,7 @@ const SYSTEM_PROMPT = `You are the Agency OS Agent — a WhatsApp AI assistant f
 You receive short WhatsApp messages and take real actions in the user's Notion workspace.
 
 ## YOUR TOOLS
-- add_client: Add a new client to Notion CRM
+- add_client: Add a new client to Notion Clients
 - add_project: Add a new project to Notion Projects
 - add_invoice: Create an invoice in Notion Invoices
 - query_notion: Read from any Notion database
@@ -23,7 +23,7 @@ Extract data from casual, short messages. Examples:
 - "New client Raj Sharma, restaurant, 15k chatbot" → add_client(name=Raj Sharma, contact="", service=AI Chatbot, value=15000, status=Lead)
 - "Project for Goa Eats website, due 2026-04-30" → add_project(title=Goa Eats Website, client=Goa Eats, due_date=2026-04-30, status=Planning)
 - "Invoice Coconut Grove 12000 pending" → add_invoice(client=Coconut Grove, amount=12000, status=Pending)
-- "Show me my active clients" → query_notion(database=crm)
+- "Show me my active clients" → query_notion(database=clients)
 - "Show projects" → query_notion(database=projects)
 - "Show invoices" → query_notion(database=invoices)
 
@@ -72,7 +72,7 @@ async function queryDb(dbId) {
 const TOOLS = [
   {
     name: "add_client",
-    description: "Add a new client to the Notion CRM database",
+    description: "Add a new client to the Notion Clients database",
     input_schema: {
       type: "object",
       properties: {
@@ -130,7 +130,7 @@ const TOOLS = [
       properties: {
         database: {
           type: "string",
-          enum: ["crm", "projects", "invoices"],
+          enum: ["clients", "projects", "invoices"],
         },
       },
       required: ["database"],
@@ -141,7 +141,7 @@ const TOOLS = [
 // ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function runTool(name, input) {
     const IDS = {
-  crm:
+  clients:
     process.env.NOTION_CLIENTS_DATABASE_ID ||
     process.env.NOTION_CLIENTS_DB_ID ||
     process.env.NOTION_CRM_DB_ID,
@@ -156,9 +156,9 @@ async function runTool(name, input) {
 };
   try {
     if (name === "add_client") {
-      if (!IDS.crm) return { ok: false, error: "CRM DB not connected" };
+      if (!IDS.clients return { ok: false, error: "Clients DB not connected" };
 
-      await createPage(IDS.crm, {
+      await createPage(IDS.clients, {
         "Client Name": {
           title: [{ text: { content: input.name || "New Client" } }],
         },
@@ -182,7 +182,7 @@ async function runTool(name, input) {
         },
       });
 
-      return { ok: true, msg: `Client "${input.name}" added to CRM` };
+      return { ok: true, msg: `Client "${input.name}" added to Clients` };
     }
 
     if (name === "add_project") {
