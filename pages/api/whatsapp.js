@@ -65,7 +65,37 @@ async function createPage(dbId, props) {
 }
 
 async function queryDb(dbId) {
-  return notionReq(`/databases/${dbId}/query`, "POST", { page_size: 10 });
+  return notionReq(`/databases/${dbId}/query`, "POST", { page_size: 20 });
+}
+
+// Try both possible title property names so Notion naming mismatch doesn't break writes.
+async function createClientPage(dbId, input) {
+  const titleValue = input.name || "New Client";
+
+  const attempts = [
+    {
+      "Client Name": {
+        title: [{ text: { content: titleValue } }],
+      },
+    },
+    {
+      "Name": {
+        title: [{ text: { content: titleValue } }],
+      },
+    },
+  ];
+
+  let lastError = null;
+
+  for (const props of attempts) {
+    try {
+      return await createPage(dbId, props);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error("Unable to create client");
 }
 
 // ── TOOL DEFINITIONS ──────────────────────────────────────────────────────────
@@ -140,36 +170,36 @@ const TOOLS = [
 
 // ── TOOL EXECUTOR ─────────────────────────────────────────────────────────────
 async function runTool(name, input) {
-    const IDS = {
-  clients:
-    process.env.NOTION_CLIENTS_DATABASE_ID ||
-    process.env.NOTION_CLIENTS_DB_ID ||
-    process.env.NOTION_CRM_DB_ID,
+  const IDS = {
+    clients:
+      process.env.NOTION_CLIENTS_DATABASE_ID ||
+      process.env.NOTION_CLIENTS_DB_ID ||
+      process.env.NOTION_CRM_DB_ID,
 
-  projects:
-    process.env.NOTION_PROJECTS_DATABASE_ID ||
-    process.env.NOTION_PROJECTS_DB_ID,
+    projects:
+      process.env.NOTION_PROJECTS_DATABASE_ID ||
+      process.env.NOTION_PROJECTS_DB_ID,
 
-  invoices:
-    process.env.NOTION_INVOICES_DATABASE_ID ||
-    process.env.NOTION_INVOICES_DB_ID,
-};
+    invoices:
+      process.env.NOTION_INVOICES_DATABASE_ID ||
+      process.env.NOTION_INVOICES_DB_ID,
+  };
+
   try {
     if (name === "add_client") {
-      if (!IDS.clients) return { ok: false, error: "Clients DB not connected" };
+      if (!IDS.clients) {
+        return { ok: false, error: "Clients DB not connected" };
+      }
 
-      await createPage(IDS.clients, {
-        "Name": {
-          title: [{ text: { content: input.name || "New Client" } }],
-        },
-      
-      });
+      await createClientPage(IDS.clients, input);
 
-      return { ok: true, msg: `Client "${input.name}" added to Clients` };
+      return { ok: true, msg: `✅ Client "${input.name}" added to Clients` };
     }
 
     if (name === "add_project") {
-      if (!IDS.projects) return { ok: false, error: "Projects DB not connected" };
+      if (!IDS.projects) {
+        return { ok: false, error: "Projects DB not connected" };
+      }
 
       const props = {
         "Project Name": {
@@ -189,11 +219,13 @@ async function runTool(name, input) {
 
       await createPage(IDS.projects, props);
 
-      return { ok: true, msg: `Project "${input.title}" created` };
+      return { ok: true, msg: `✅ Project "${input.title}" created` };
     }
 
     if (name === "add_invoice") {
-      if (!IDS.invoices) return { ok: false, error: "Invoices DB not connected" };
+      if (!IDS.invoices) {
+        return { ok: false, error: "Invoices DB not connected" };
+      }
 
       await createPage(IDS.invoices, {
         "Invoice no": {
@@ -207,12 +239,14 @@ async function runTool(name, input) {
         },
       });
 
-      return { ok: true, msg: `Invoice for ${input.client} created` };
+      return { ok: true, msg: `✅ Invoice for ${input.client} created` };
     }
 
     if (name === "query_notion") {
       const dbKey = input.database;
-      if (!IDS[dbKey]) return { ok: false, error: `${dbKey} DB not connected` };
+      if (!IDS[dbKey]) {
+        return { ok: false, error: `${dbKey} DB not connected` };
+      }
 
       const result = await queryDb(IDS[dbKey]);
       const items = (result.results || []).map((p) => {
@@ -220,6 +254,7 @@ async function runTool(name, input) {
         return {
           name:
             pr["Client Name"]?.title?.[0]?.plain_text ||
+            pr["Name"]?.title?.[0]?.plain_text ||
             pr["Project Name"]?.title?.[0]?.plain_text ||
             pr["Invoice no"]?.title?.[0]?.plain_text ||
             "(unnamed)",
@@ -245,7 +280,11 @@ async function runTool(name, input) {
 
 // ── TWILIO REPLY ──────────────────────────────────────────────────────────────
 function twilioXml(message) {
-  const safeMessage = String(message || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeMessage = String(message || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
   return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safeMessage}</Message></Response>`;
 }
 
